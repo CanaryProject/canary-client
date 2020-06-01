@@ -280,6 +280,7 @@ namespace Proto {
         CreatureTypeNpc,
         CreatureTypeSummonOwn,
         CreatureTypeSummonOther,
+        CreatureTypeHidden,
         CreatureTypeUnknown = 0xFF
     };
 
