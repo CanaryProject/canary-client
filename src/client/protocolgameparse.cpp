@@ -409,8 +409,8 @@ void ProtocolGame::parseMessage(const InputMessagePtr &msg)
     }
     catch (stdext::exception &e)
     {
-        g_logger.error(stdext::format("ProtocolGame parse message exception (%d bytes unread, last opcode is %d, prev opcode is %d): %s",
-                                      msg->getUnreadSize(), opcode, prevOpcode, e.what()));
+        g_logger.error(stdext::format("ProtocolGame parse message exception (%d bytes unread, last opcode is 0x%02x (%d), prev opcode is 0x%02x(%d)): %s",
+                                      msg->getUnreadSize(), opcode, opcode, prevOpcode, prevOpcode, e.what()));
     }
 }
 
@@ -1395,7 +1395,6 @@ void ProtocolGame::parsePlayerStats(const InputMessagePtr &msg)
     double level = msg->getU16();
     double levelPercent = msg->getU8();
 
-    msg->getDouble(); // experienceBonus
     msg->getU16();    // baseXpGain
     msg->getU16();    // grindingAddend
     msg->getU16();    // storeBoostAddend
