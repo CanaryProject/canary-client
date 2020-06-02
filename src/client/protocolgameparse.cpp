@@ -2085,9 +2085,6 @@ void ProtocolGame::parseCreatureType(const InputMessagePtr &msg)
     uint32 id = msg->getU32();
     uint8 type = msg->getU8();
 
-    // extra weird type byte from 12.x +
-    msg->getU8();
-
     if (type == Proto::CreatureTypeSummonOwn)
     {
         // TODO: implement player summon type specific features
@@ -2300,6 +2297,13 @@ CreaturePtr ProtocolGame::getCreature(const InputMessagePtr &msg, int type)
             uint id = msg->getU32();
 
             int creatureType = msg->getU8();
+            
+            if (creatureType == Proto::CreatureTypeSummonOwn)
+            {
+                // TODO: Implement player summon creature type specific features
+                msg->getU32(); // master id
+                creature = MonsterPtr(new Monster);
+            }
 
             std::string name = g_game.formatCreatureName(msg->getString());
 
@@ -2317,12 +2321,6 @@ CreaturePtr ProtocolGame::getCreature(const InputMessagePtr &msg, int type)
                 creature = MonsterPtr(new Monster);
             else if (creatureType == Proto::CreatureTypeNpc)
                 creature = NpcPtr(new Npc);
-            else if (creatureType == Proto::CreatureTypeSummonOwn)
-            {
-                // TODO: Implement player summon creature type specific features
-                msg->getU32(); // master id
-                creature = MonsterPtr(new Monster);
-            }
             else if (creatureType == Proto::CreatureTypeHidden)
             {
                 // TODO: Implement hidden creature type specific features
@@ -2412,15 +2410,10 @@ CreaturePtr ProtocolGame::getCreature(const InputMessagePtr &msg, int type)
             g_logger.traceError("invalid creature");
 
         Otc::Direction direction = (Otc::Direction)msg->getU8();
-        if (creature)
+        bool unpass = msg->getU8();
+        if (creature) {
             creature->turn(direction);
-
-        if (g_game.getClientVersion() >= 953)
-        {
-            bool unpass = msg->getU8();
-
-            if (creature)
-                creature->setPassable(!unpass);
+            creature->setPassable(!unpass);
         }
     }
     else
@@ -2442,11 +2435,6 @@ ItemPtr ProtocolGame::getItem(const InputMessagePtr &msg, int id)
 
     if (item->isStackable() || item->isFluidContainer() || item->isSplash() || item->isChargeable())
         item->setCountOrSubType(msg->getU8());
-
-    // TODO implement is container usage
-    // TODO implement quickloot flags usage?
-    if (item->isContainer())
-        msg->getU8();
 
     if (item->getAnimationPhases() > 1)
     {
