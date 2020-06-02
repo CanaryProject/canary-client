@@ -1449,30 +1449,21 @@ void ProtocolGame::parsePlayerSkills(const InputMessagePtr &msg)
     msg->getU16(); // base magic level
     msg->getU16(); // base magic level
     msg->getU16(); // magic level percent
-    int lastSkill = Otc::Fishing + 1;
-    if (g_game.getFeature(Otc::GameAdditionalSkills))
-        lastSkill = Otc::LastSkill;
 
-    for (int skill = 0; skill < lastSkill; skill++)
-    {
+    for (int skill = 0; skill < Otc::LastSkill; skill++) {
         uint16_t level = msg->getU16();
         uint16_t baseLevel = msg->getU16();
-        uint16_t levelPercent = 0;
 
         // Critical, Life Leech and Mana Leech have no level percent
-        if (skill <= Otc::Fishing)
-        {
-            baseLevel = msg->getU16();
-            levelPercent = msg->getU16();
-        }
-
-        // TODO to apply capacity and max capacity usage
-        msg->getU32(); // total capacity
-        msg->getU32(); // total base capacity
+        uint16_t levelPercent = skill <= Otc::Fishing ? msg->getU16() : 0;
 
         m_localPlayer->setSkill((Otc::Skill)skill, level, levelPercent);
         m_localPlayer->setBaseSkill((Otc::Skill)skill, baseLevel);
     }
+    
+    // TODO to apply capacity and max capacity usage
+    msg->getU32(); // total capacity
+    msg->getU32(); // total base capacity
 }
 
 void ProtocolGame::parsePlayerState(const InputMessagePtr &msg)
