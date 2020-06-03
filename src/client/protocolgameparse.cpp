@@ -801,7 +801,7 @@ void ProtocolGame::parseDeath(const InputMessagePtr &msg)
 
     deathType = msg->getU8();
     penality = msg->getU8();
-    deathRedemption = msg->getU8(); // TODO apply deathRedemption value
+    deathRedemption = msg->getU8(); // TODO: apply deathRedemption value
 
     g_game.processDeath(deathType, penality);
 }
@@ -1465,16 +1465,9 @@ void ProtocolGame::parsePlayerStats(const InputMessagePtr &msg)
     m_localPlayer->setHealth(health, maxHealth);
     m_localPlayer->setFreeCapacity(freeCapacity);
 
-    // TODO implement capacity parse on AddPlayerSkills
-    // m_localPlayer->setTotalCapacity(totalCapacity);
-
     m_localPlayer->setExperience(experience);
     m_localPlayer->setLevel(level, levelPercent);
     m_localPlayer->setMana(mana, maxMana);
-
-    // TODO implement magiclevel parse on AddPlayerSkills
-    // m_localPlayer->setMagicLevel(magicLevel, magicLevelPercent);
-    // m_localPlayer->setBaseMagicLevel(baseMagicLevel);
 
     m_localPlayer->setStamina(stamina);
     m_localPlayer->setSoul(soul);
@@ -1485,10 +1478,12 @@ void ProtocolGame::parsePlayerStats(const InputMessagePtr &msg)
 
 void ProtocolGame::parsePlayerSkills(const InputMessagePtr &msg)
 {
-    msg->getU16(); // magic level
-    msg->getU16(); // base magic level
-    msg->getU16(); // base magic level
-    msg->getU16(); // magic level percent
+    uint16_t magicLevel = msg->getU16(); // magic level
+    uint16_t baseMagicLevel = msg->getU16(); // base magic level
+    uint16_t magicLevelPercent = msg->getU16(); // magic level percent
+
+    m_localPlayer->setMagicLevel(magicLevel, magicLevelPercent);
+    m_localPlayer->setBaseMagicLevel(baseMagicLevel);
 
     for (int skill = 0; skill < Otc::LastSkill; skill++) {
         uint16_t level = msg->getU16();
@@ -1501,8 +1496,10 @@ void ProtocolGame::parsePlayerSkills(const InputMessagePtr &msg)
         m_localPlayer->setBaseSkill((Otc::Skill)skill, baseLevel);
     }
     
-    // TODO to apply capacity and max capacity usage
-    msg->getU32(); // total capacity
+    uint32_t totalCapacity = msg->getU32(); // total capacity
+    m_localPlayer->setTotalCapacity(totalCapacity);
+
+    // TODO: apply total base capacity usage
     msg->getU32(); // total base capacity
 }
 
