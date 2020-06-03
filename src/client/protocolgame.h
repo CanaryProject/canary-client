@@ -149,7 +149,6 @@ private:
     void parsePvpSituations(const InputMessagePtr& msg);
     void parsePreset(const InputMessagePtr& msg);
     void parseCreatureType(const InputMessagePtr& msg);
-    void parsePlayerHelpers(const InputMessagePtr& msg);
     void parseMessage(const InputMessagePtr& msg);
     void parsePendingGame(const InputMessagePtr& msg);
     void parseEnterGame(const InputMessagePtr& msg);

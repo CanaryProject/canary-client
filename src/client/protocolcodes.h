@@ -105,7 +105,6 @@ namespace Proto {
         GameServerCreatureParty             = 0x91,
         GameServerCreatureUnpass            = 0x92,
         GameServerCreatureMarks             = 0x93,
-        GameServerPlayerHelpers             = 0x94,
         GameServerCreatureType              = 0x95,
         GameServerEditText                  = 0x96,
         GameServerEditList                  = 0x97,
@@ -163,7 +162,24 @@ namespace Proto {
         GameServerStore                     = 0xFB, // 1080
         GameServerStoreOffers               = 0xFC, // 1080
         GameServerStoreTransactionHistory   = 0xFD, // 1080
-        GameServerStoreCompletePurchase     = 0xFE  // 1080
+        GameServerStoreCompletePurchase     = 0xFE, // 1080
+
+        // 12.x +
+        GameServerUpdateSupplyTracker = 0xCE,
+        GameServerSendPreyData = 0x00,
+        GameServerSendTibiaTime = 0x00,
+        GameServerSendLootStats = 0x00,
+        GameServerSendWaste = 0x00,
+        GameServerSendBestiaryEntryChanged = 0x00,
+        GameServerSendBlessDialog = 0x00,
+        GameServerSendCollectionRessource = 0x00,
+        GameServerSendDailyReward = 0x00,
+        GameServerSendOpenRewardWall = 0x00,
+        GameServerSendDailyRewardCollectionState = 0x00,
+        GameServerSendKillTrackerUpdate = 0x00,
+        GameServerSendUpdateSupplyTracker = 0x00,
+        GameServerSendUpdateImpactTracker = 0x00,
+        GameServerSendUpdateLootTracker = 0x00
     };
 
     enum ClientOpcodes : uint8

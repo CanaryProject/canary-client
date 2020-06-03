@@ -338,9 +338,6 @@ void ProtocolGame::parseMessage(const InputMessagePtr &msg)
             case Proto::GameServerEnterGame:
                 parseEnterGame(msg);
                 break;
-            case Proto::GameServerPlayerHelpers:
-                parsePlayerHelpers(msg);
-                break;
             // PROTOCOL>=1000
             case Proto::GameServerCreatureMarks:
                 parseCreaturesMark(msg);
@@ -669,18 +666,6 @@ void ProtocolGame::parsePvpSituations(const InputMessagePtr &msg)
     uint8 openPvpSituations = msg->getU8();
 
     g_game.setOpenPvpSituations(openPvpSituations);
-}
-
-void ProtocolGame::parsePlayerHelpers(const InputMessagePtr &msg)
-{
-    uint id = msg->getU32();
-    int helpers = msg->getU16();
-
-    CreaturePtr creature = g_map.getCreatureById(id);
-    if (creature)
-        g_game.processPlayerHelpers(helpers);
-    else
-        g_logger.traceError(stdext::format("could not get creature with id %d", id));
 }
 
 void ProtocolGame::parseGMActions(const InputMessagePtr &msg)
