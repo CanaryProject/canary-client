@@ -554,7 +554,7 @@ void ProtocolGame::parseBlessings(const InputMessagePtr &msg)
     uint16 blessings = msg->getU16(); // bless flag
     uint8 blessStatus = msg->getU8(); // TODO: add usage to blessStatus - 1 = Disabled | 2 = normal | 3 = green
 
-    // msg->getU16(); // extra weird u16 if bless > 5 = 1 else 0
+    msg->getU16(); // extra weird u16 if bless > 5 = 1 else 0
 
     m_localPlayer->setBlessings(blessings);
 }
@@ -1412,9 +1412,10 @@ void ProtocolGame::parsePremiumTrigger(const InputMessagePtr &msg)
 void ProtocolGame::parsePlayerInfo(const InputMessagePtr &msg)
 {
     bool premium = msg->getU8(); // premium
-    if (g_game.getFeature(Otc::GamePremiumExpiration))
-        msg->getU32();           // premium expiration used for premium advertisement
+    msg->getU32();           // premium expiration used for premium advertisement
     int vocation = msg->getU8(); // vocation
+
+    msg->getU8(); // prey window byte
 
     int spellCount = msg->getU16();
     std::vector<int> spells;
@@ -2208,22 +2209,16 @@ Outfit ProtocolGame::getOutfit(const InputMessagePtr &msg)
 {
     Outfit outfit;
 
-    int lookType;
-    if (g_game.getFeature(Otc::GameLooktypeU16))
-        lookType = msg->getU16();
-    else
-        lookType = msg->getU8();
+    uint16_t lookType = msg->getU16();
 
     if (lookType != 0)
     {
         outfit.setCategory(ThingCategoryCreature);
-        int head = msg->getU8();
-        int body = msg->getU8();
-        int legs = msg->getU8();
-        int feet = msg->getU8();
-        int addons = 0;
-        if (g_game.getFeature(Otc::GamePlayerAddons))
-            addons = msg->getU8();
+        uint8_t head = msg->getU8();
+        uint8_t body = msg->getU8();
+        uint8_t legs = msg->getU8();
+        uint8_t feet = msg->getU8();
+        uint8_t addons = msg->getU8();
 
         if (!g_things.isValidDatId(lookType, ThingCategoryCreature))
         {
@@ -2258,11 +2253,7 @@ Outfit ProtocolGame::getOutfit(const InputMessagePtr &msg)
         }
     }
 
-    if (g_game.getFeature(Otc::GamePlayerMounts))
-    {
-        int mount = msg->getU16();
-        outfit.setMount(mount);
-    }
+    outfit.setMount(msg->getU16());
 
     return outfit;
 }
