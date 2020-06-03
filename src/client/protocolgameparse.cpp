@@ -1833,7 +1833,7 @@ void ProtocolGame::parseOpenOutfitWindow(const InputMessagePtr &msg)
     std::vector<std::tuple<int, std::string, int>> outfitList;
 
     // new outfit model size is uint_16
-    int outfitCount = msg->getU16();
+    uint16_t outfitCount = msg->getU16();
     for (int i = 0; i < outfitCount; i++)
     {
         int outfitId = msg->getU16();
