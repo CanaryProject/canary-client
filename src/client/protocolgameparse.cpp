@@ -64,10 +64,7 @@ void ProtocolGame::parseMessage(const InputMessagePtr &msg)
             switch (opcode)
             {
             case Proto::GameServerLoginOrPendingState:
-                if (g_game.getFeature(Otc::GameLoginPending))
-                    parsePendingGame(msg);
-                else
-                    parseLogin(msg);
+                parsePendingGame(msg);
                 break;
             case Proto::GameServerGMActions:
                 parseGMActions(msg);
@@ -398,17 +395,26 @@ void ProtocolGame::parseMessage(const InputMessagePtr &msg)
                 parseChangeMapAwareRange(msg);
                 break;
             // 12.x +
+            case Proto::GameServerSendClientCheck:
+                parseClientCheck(msg);
+                break;
+            case Proto::GameServerSendGameNews:
+                parseGameNews(msg);
+                break;
             case Proto::GameServerSendBlessDialog:
                 parseBlessDialog(msg);
                 break;
             case Proto::GameServerSendRestingAreaState:
                 parseRestingAreaState(msg);
                 break;
-            case Proto::GameServerSendUpdateSupplyTracker:
-                parseUpdateSupplyTracker(msg);
-                break;
             case Proto::GameServerSendUpdateImpactTracker:
                 parseUpdateImpactTracker(msg);
+                break;
+            case Proto::GameServerSendItemsPrice:
+                parseItemsPrice(msg);
+                break;
+            case Proto::GameServerSendUpdateSupplyTracker:
+                parseUpdateSupplyTracker(msg);
                 break;
             case Proto::GameServerSendUpdateLootTracker:
                 parseUpdateLootTracker(msg);
@@ -439,6 +445,12 @@ void ProtocolGame::parseMessage(const InputMessagePtr &msg)
                 break;
             case Proto::GameServerSendPreyRerollPrice:
                 parsePreyRerollPrice(msg);
+                break;
+            case Proto::GameServerSendImbuementWindow:
+                parseImbuementWindow(msg);
+                break;
+            case Proto::GameServerSendCloseImbuementWindow:
+                parseCloseImbuementWindow(msg);
                 break;
             case Proto::GameServerSendError:
                 parseError(msg);
@@ -528,8 +540,8 @@ void ProtocolGame::parseEnterGame(const InputMessagePtr &)
 
 void ProtocolGame::parseStoreButtonIndicators(const InputMessagePtr &msg)
 {
-    msg->getU8(); // unknown
-    msg->getU8(); // unknown
+    msg->getU8(); // have sale item
+    msg->getU8(); // have new item
 }
 
 void ProtocolGame::parseSetStoreDeepLink(const InputMessagePtr &msg)
@@ -2499,6 +2511,18 @@ Position ProtocolGame::getPosition(const InputMessagePtr &msg)
 }
 
 // 12.x +
+void ProtocolGame::parseClientCheck(const InputMessagePtr& msg) {
+    msg->getU32(); // 1
+    msg->getU8(); // 1
+}
+
+void ProtocolGame::parseGameNews(const InputMessagePtr& msg) {
+    msg->getU32(); // 1
+    msg->getU8(); // 1
+
+    // TODO: implement game news usage
+}
+
 void ProtocolGame::parseBlessDialog(const InputMessagePtr& msg) {
     // parse bless amount
     uint8_t totalBless = msg->getU8(); // total bless
@@ -2539,17 +2563,28 @@ void ProtocolGame::parseRestingAreaState(const InputMessagePtr& msg) {
     // TODO: implement resting area state usage
 }
 
-void ProtocolGame::parseUpdateSupplyTracker(const InputMessagePtr& msg) {
-    msg->getU16(); // item client ID
-
-    // TODO: implement supply tracker usage
-}
-
 void ProtocolGame::parseUpdateImpactTracker(const InputMessagePtr& msg) {
     msg->getU8(); // is heal
     msg->getU32(); // amount
     
     // TODO: implement impact tracker usage
+}
+
+void ProtocolGame::parseItemsPrice(const InputMessagePtr& msg) {
+    uint16_t priceCount = msg->getU16(); // count
+
+    for (int i = 0; i < priceCount; i++) {
+        msg->getU16(); // item client id
+        msg->getU32(); // price
+    }
+
+    // TODO: implement items price usage
+}
+
+void ProtocolGame::parseUpdateSupplyTracker(const InputMessagePtr& msg) {
+    msg->getU16(); // item client ID
+
+    // TODO: implement supply tracker usage
 }
 
 void ProtocolGame::parseUpdateLootTracker(const InputMessagePtr& msg) {
@@ -2629,13 +2664,120 @@ void ProtocolGame::parsePreyTimeLeft(const InputMessagePtr& msg) {
     // TODO: implement protocol parse
 }
 
+void ProtocolGame::getPreyMonster(const InputMessagePtr& msg) {
+    msg->getString(); // mosnter name
+    msg->getU16(); // looktype
+    msg->getU8(); // head
+    msg->getU8(); // body
+    msg->getU8(); // legs
+    msg->getU8(); // feet
+    msg->getU8(); // addons
+}
+
+void ProtocolGame::getPreyMonsters(const InputMessagePtr& msg) {
+    uint8_t monstersSize = msg->getU8(); // monster list size
+    for (uint8_t i = 0; i < monstersSize; i++) 
+        getPreyMonster(msg);
+}
+
 void ProtocolGame::parsePreyData(const InputMessagePtr& msg) {
-    // TODO: implement protocol parse
+    msg->getU8(); // slot
+    uint8_t slotState = msg->getU8(); // slot state
+
+    // if is initialization, get empty stuff
+    if (msg->peekU8() == 0x00) {
+        msg->getU8();
+    } else {
+        switch(slotState) {
+            case Otc::PREY_STATE_LOCKED:
+                msg->getU8(); // prey slot unlocked
+                break;
+            case Otc::PREY_STATE_INACTIVE:
+                break;
+            case Otc::PREY_STATE_ACTIVE:
+                getPreyMonster(msg);
+                msg->getU8(); // bonus type
+                msg->getU16(); // bonus value
+                msg->getU8(); // bonus grade
+                msg->getU16(); // time left
+                break;
+            case Otc::PREY_STATE_SELECTION:
+                getPreyMonsters(msg);
+                break;
+            case Otc::PREY_STATE_SELECTION_CHANGE_MONSTER:
+                msg->getU8(); // bonus type
+                msg->getU16(); // bonus value
+                msg->getU8(); // bonus grade
+                getPreyMonsters(msg);
+                break;
+        }
+    }
+
+    msg->getU16(); // next free roll
+    msg->getU8(); // wildcards
+    
+    // TODO: implement prey data usage
 }
 
 void ProtocolGame::parsePreyRerollPrice(const InputMessagePtr& msg) {
     msg->getU32(); // reroll price
+    msg->getU8(); // wildcard
+    msg->getU8(); // select directly
     // TODO: implement prey reroll price usage
+}
+
+void ProtocolGame::getImbuementInfo(const InputMessagePtr& msg) {
+    msg->getU32(); // imbuid
+    msg->getString(); // name
+    msg->getString(); // description
+    msg->getString(); // subgroup
+
+    msg->getU16(); // iconId
+    msg->getU32(); // duration
+
+    msg->getU8(); // is premium
+
+    uint8_t itemsSize = msg->getU8(); // items size
+    for (uint8_t i = 0; i < itemsSize; i++) {
+        msg->getU16(); // item client ID
+        msg->getString(); // item name
+        msg->getU16(); // count
+    }
+
+    msg->getU32(); // base price
+    msg->getU8(); // base percent
+    msg->getU32(); // base protection
+}
+
+void ProtocolGame::parseImbuementWindow(const InputMessagePtr& msg) {
+    msg->getU16(); // item client ID
+    uint8_t slot = msg->getU8(); // slot id 
+
+    for (uint8_t i = 0; i < slot; i++) {
+        uint8_t firstByte = msg->getU8();
+        if (firstByte == 0x01) {
+            getImbuementInfo(msg);
+            msg->getU32(); // info >> 8
+            msg->getU32(); // removecust
+        }
+    }
+
+    uint16_t imbSize = msg->getU16(); // imbuement size
+    for (uint16 i = 0; i < imbSize; i++) {
+        getImbuementInfo(msg);
+    }
+
+    uint32_t neededItemsSize = msg->getU32(); // needed items size
+    for (uint32_t i = 0; i < neededItemsSize; i++) {
+        msg->getU16(); // item client id
+        msg->getU16(); // item count
+    }
+
+    // TODO: implement imbuement window usage
+}
+
+void ProtocolGame::parseCloseImbuementWindow(const InputMessagePtr& msg) {
+    // TODO: implement close imbuement window usage
 }
 
 void ProtocolGame::parseError(const InputMessagePtr& msg) {
@@ -2646,7 +2788,7 @@ void ProtocolGame::parseError(const InputMessagePtr& msg) {
 }
 
 void ProtocolGame::parseCollectionResource(const InputMessagePtr& msg) {
-    msg->getU8(); // unknown
+    msg->getU8(); // id (0x1 bank, 0x2 inventory, 0xA prey)
     msg->getU64(); // resource value
 
     // TODO: implement collection resource usage

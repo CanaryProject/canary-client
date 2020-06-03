@@ -165,9 +165,12 @@ namespace Proto {
         GameServerStoreCompletePurchase     = 0xFE, // 1080
 
         // 12.x +
+        GameServerSendClientCheck = 0x63,
+        GameServerSendGameNews = 0x98,
         GameServerSendBlessDialog = 0x9B,
         GameServerSendRestingAreaState = 0xA9,
         GameServerSendUpdateImpactTracker = 0xCC,
+        GameServerSendItemsPrice = 0xCD,
         GameServerSendUpdateSupplyTracker = 0xCE,
         GameServerSendUpdateLootTracker = 0xCF,
         GameServerSendKillTrackerUpdate = 0xD1,
@@ -179,6 +182,8 @@ namespace Proto {
         GameServerSendPreyTimeLeft = 0xE7,
         GameServerSendPreyData = 0xE8,
         GameServerSendPreyRerollPrice = 0xE9,
+        GameServerSendImbuementWindow = 0xEB,
+        GameServerSendCloseImbuementWindow = 0xEC,
         GameServerSendError = 0xED,
         GameServerSendCollectionResource = 0xEE,
         GameServerSendTibiaTime = 0xEF

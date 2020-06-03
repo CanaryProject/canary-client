@@ -243,10 +243,13 @@ private:
     void parseCreaturesMark(const InputMessagePtr& msg);
 
     // 12.x +
+    void parseClientCheck(const InputMessagePtr& msg);
+    void parseGameNews(const InputMessagePtr& msg);
     void parseBlessDialog(const InputMessagePtr& msg);
     void parseRestingAreaState(const InputMessagePtr& msg);
-    void parseUpdateSupplyTracker(const InputMessagePtr& msg);
     void parseUpdateImpactTracker(const InputMessagePtr& msg);
+    void parseItemsPrice(const InputMessagePtr& msg);
+    void parseUpdateSupplyTracker(const InputMessagePtr& msg);
     void parseUpdateLootTracker(const InputMessagePtr& msg);
     void parseKillTrackerUpdate(const InputMessagePtr& msg);
     void parseBestiaryEntryChanged(const InputMessagePtr& msg);
@@ -255,8 +258,13 @@ private:
     void parseDailyReward(const InputMessagePtr& msg);
     void parseRewardHistory(const InputMessagePtr& msg);
     void parsePreyTimeLeft(const InputMessagePtr& msg);
+    void getPreyMonster(const InputMessagePtr& msg);
+    void getPreyMonsters(const InputMessagePtr& msg);
     void parsePreyData(const InputMessagePtr& msg);
     void parsePreyRerollPrice(const InputMessagePtr& msg);
+    void getImbuementInfo(const InputMessagePtr& msg);
+    void parseImbuementWindow(const InputMessagePtr& msg);
+    void parseCloseImbuementWindow(const InputMessagePtr& msg);
     void parseError(const InputMessagePtr& msg);
     void parseCollectionResource(const InputMessagePtr& msg);
     void parseTibiaTime(const InputMessagePtr& msg);
