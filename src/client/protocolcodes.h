@@ -165,21 +165,24 @@ namespace Proto {
         GameServerStoreCompletePurchase     = 0xFE, // 1080
 
         // 12.x +
-        GameServerUpdateSupplyTracker = 0xCE,
-        GameServerSendPreyData = 0x00,
-        GameServerSendTibiaTime = 0x00,
-        GameServerSendLootStats = 0x00,
-        GameServerSendWaste = 0x00,
-        GameServerSendBestiaryEntryChanged = 0x00,
-        GameServerSendBlessDialog = 0x00,
-        GameServerSendCollectionRessource = 0x00,
-        GameServerSendDailyReward = 0x00,
-        GameServerSendOpenRewardWall = 0x00,
-        GameServerSendDailyRewardCollectionState = 0x00,
-        GameServerSendKillTrackerUpdate = 0x00,
-        GameServerSendUpdateSupplyTracker = 0x00,
-        GameServerSendUpdateImpactTracker = 0x00,
-        GameServerSendUpdateLootTracker = 0x00
+        GameServerSendBlessDialog = 0x9B,
+        GameServerSendRestingAreaState = 0xA9,
+        GameServerSendUpdateImpactTracker = 0xCC,
+        GameServerSendUpdateSupplyTracker = 0xCE,
+        GameServerSendUpdateLootTracker = 0xCF,
+        GameServerSendKillTrackerUpdate = 0xD1,
+        GameServerSendBestiaryEntryChanged = 0xD9,
+        GameServerSendDailyRewardCollectionState = 0xDE,
+        GameServerSendOpenRewardWall = 0xE2,
+        GameServerSendDailyReward = 0xE4,
+        GameServerSendRewardHistory = 0xE5,
+        GameServerSendPreyTimeLeft = 0xE7,
+        GameServerSendPreyData = 0xE8,
+        GameServerSendPreyRerollPrice = 0xE9,
+        GameServerSendError = 0xED,
+        GameServerSendCollectionResource = 0xEE,
+        GameServerSendTibiaTime = 0xEF
+
     };
 
     enum ClientOpcodes : uint8

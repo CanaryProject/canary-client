@@ -397,6 +397,58 @@ void ProtocolGame::parseMessage(const InputMessagePtr &msg)
             case Proto::GameServerChangeMapAwareRange:
                 parseChangeMapAwareRange(msg);
                 break;
+            // 12.x +
+            case Proto::GameServerSendBlessDialog:
+                parseBlessDialog(msg);
+                break;
+            case Proto::GameServerSendRestingAreaState:
+                parseRestingAreaState(msg);
+                break;
+            case Proto::GameServerSendUpdateSupplyTracker:
+                parseUpdateSupplyTracker(msg);
+                break;
+            case Proto::GameServerSendUpdateImpactTracker:
+                parseUpdateImpactTracker(msg);
+                break;
+            case Proto::GameServerSendUpdateLootTracker:
+                parseUpdateLootTracker(msg);
+                break;
+            case Proto::GameServerSendKillTrackerUpdate:
+                parseKillTrackerUpdate(msg);
+                break;
+            case Proto::GameServerSendBestiaryEntryChanged:
+                parseBestiaryEntryChanged(msg);
+                break;
+            case Proto::GameServerSendDailyRewardCollectionState:
+                parseDailyRewardCollectionState(msg);
+                break;
+            case Proto::GameServerSendOpenRewardWall:
+                parseOpenRewardWall(msg);
+                break;
+            case Proto::GameServerSendDailyReward:
+                parseDailyReward(msg);
+                break;
+            case Proto::GameServerSendRewardHistory:
+                parseRewardHistory(msg);
+                break;
+            case Proto::GameServerSendPreyTimeLeft:
+                parsePreyTimeLeft(msg);
+                break;
+            case Proto::GameServerSendPreyData:
+                parsePreyData(msg);
+                break;
+            case Proto::GameServerSendPreyRerollPrice:
+                parsePreyRerollPrice(msg);
+                break;
+            case Proto::GameServerSendError:
+                parseError(msg);
+                break;
+            case Proto::GameServerSendCollectionResource:
+                parseCollectionResource(msg);
+                break;
+            case Proto::GameServerSendTibiaTime:
+                parseTibiaTime(msg);
+                break;
             default:
                 stdext::throw_exception(stdext::format("unhandled opcode %d", (int)opcode));
                 break;
@@ -487,8 +539,11 @@ void ProtocolGame::parseSetStoreDeepLink(const InputMessagePtr &msg)
 
 void ProtocolGame::parseBlessings(const InputMessagePtr &msg)
 {
+    uint16 blessings = msg->getU16(); // bless flag
     uint8 blessStatus = msg->getU8(); // TODO: add usage to blessStatus - 1 = Disabled | 2 = normal | 3 = green
-    uint16 blessings = msg->getU16();
+
+    msg->getU16(); // extra weird u16 if bless > 5 = 1 else 0
+
     m_localPlayer->setBlessings(blessings);
 }
 
@@ -1905,6 +1960,7 @@ void ProtocolGame::parseQuestLine(const InputMessagePtr &msg)
     int missionCount = msg->getU8();
     for (int i = 0; i < missionCount; i++)
     {
+        msg->getU16(); // repeated quest ID
         std::string missionName = msg->getString();
         std::string missionDescrition = msg->getString();
         questMissions.emplace_back(missionName, missionDescrition);
@@ -2443,4 +2499,165 @@ Position ProtocolGame::getPosition(const InputMessagePtr &msg)
     uint8 z = msg->getU8();
 
     return Position(x, y, z);
+}
+
+// 12.x +
+void ProtocolGame::parseBlessDialog(const InputMessagePtr& msg) {
+    // parse bless amount
+    uint8_t totalBless = msg->getU8(); // total bless
+
+    // parse each bless
+    for (int i = 0; i < totalBless; i++) {
+        msg->getU16(); // bless bit wise
+        msg->getU8(); // player bless count
+    }
+    
+    // parse general info
+    msg->getU8(); // premium
+    msg->getU8(); // promotion
+    msg->getU8(); // pvp min xp loss
+    msg->getU8(); // pvp max xp loss
+    msg->getU8(); // pve exp loss
+    msg->getU8(); // equip pvp loss
+    msg->getU8(); // equip pve loss
+    msg->getU8(); // skull
+    msg->getU8(); // aol
+
+    // parse log
+    uint8_t logCount = msg->getU8(); // log count
+    for (int i = 0; i < logCount; i++) {
+        msg->getU32(); // timestamp
+        msg->getU8(); // color message (0 = white loss, 1 = red)
+        msg->getString(); // history message
+    }
+
+    // TODO: implement bless dialog usage
+}
+
+void ProtocolGame::parseRestingAreaState(const InputMessagePtr& msg) {
+    msg->getU8(); // zone
+    msg->getU8(); // state
+    msg->getString(); // message
+
+    // TODO: implement resting area state usage
+}
+
+void ProtocolGame::parseUpdateSupplyTracker(const InputMessagePtr& msg) {
+    msg->getU16(); // item client ID
+
+    // TODO: implement supply tracker usage
+}
+
+void ProtocolGame::parseUpdateImpactTracker(const InputMessagePtr& msg) {
+    msg->getU8(); // is heal
+    msg->getU32(); // amount
+    
+    // TODO: implement impact tracker usage
+}
+
+void ProtocolGame::parseUpdateLootTracker(const InputMessagePtr& msg) {
+    getItem(msg); // item
+    msg->getString(); // item name
+    
+    // TODO: implement loot tracker usage
+}
+
+void ProtocolGame::parseKillTrackerUpdate(const InputMessagePtr& msg) {
+    msg->getString(); // creature name
+    
+    msg->getU16(); // creature looktype
+    msg->getU8(); // head
+    msg->getU8(); // body
+    msg->getU8(); // legs
+    msg->getU8(); // feet
+    msg->getU8(); // addons
+
+    uint8_t corpseSize = msg->getU8(); // corpse size
+
+    for (int i = 0; i < corpseSize; i++) {
+        getItem(msg); // corpse item
+    }
+    
+    // TODO: implement kill tracker usage
+}
+
+void ProtocolGame::parseBestiaryEntryChanged(const InputMessagePtr& msg) {
+    msg->getU16(); // monster ID
+
+    // TODO: implement bestiary entry changed usage
+}
+
+void ProtocolGame::parseDailyRewardCollectionState(const InputMessagePtr& msg) {
+    msg->getU8(); // state
+
+    // TODO: implement daily reward collection state usage
+}
+
+void ProtocolGame::parseOpenRewardWall(const InputMessagePtr& msg) {
+    msg->getU8(); // bonus shrine (1) or instant bonus (0)
+    msg->getU32(); // next reward time
+    msg->getU8(); // day streak day
+    uint8_t wasDailyRewardTaken = msg->getU8(); // taken (player already took reward?)
+
+    if (wasDailyRewardTaken) {
+        msg->getString(); // error message
+    }
+
+    msg->getU32(); // time left to pickup reward without loosing streak
+    msg->getU16(); // day streak level
+    msg->getU16(); // unknown
+
+    // TODO: implement open reward wall usage
+}
+
+void ProtocolGame::parseDailyReward(const InputMessagePtr& msg) {
+    msg->getU8(); // state
+
+    // TODO: implement daily reward usage
+}
+
+void ProtocolGame::parseRewardHistory(const InputMessagePtr& msg) {
+    uint8_t historyCount = msg->getU8(); // history count
+
+    for (int i = 0; i < historyCount; i++) {
+        msg->getU32(); // timestamp
+        msg->getU8(); // is Premium
+        msg->getString(); // description
+        msg->getU16(); // daystreak
+    }
+
+    // TODO: implement reward history usage
+}
+void ProtocolGame::parsePreyTimeLeft(const InputMessagePtr& msg) {
+    // TODO: implement protocol parse
+}
+
+void ProtocolGame::parsePreyData(const InputMessagePtr& msg) {
+    // TODO: implement protocol parse
+}
+
+void ProtocolGame::parsePreyRerollPrice(const InputMessagePtr& msg) {
+    msg->getU32(); // reroll price
+    // TODO: implement prey reroll price usage
+}
+
+void ProtocolGame::parseError(const InputMessagePtr& msg) {
+    msg->getU8(); // error code
+    msg->getString(); // error
+
+    // TODO: implement error usage
+}
+
+void ProtocolGame::parseCollectionResource(const InputMessagePtr& msg) {
+    msg->getU8(); // unknown
+    msg->getU64(); // resource value
+
+    // TODO: implement collection resource usage
+}
+
+void ProtocolGame::parseTibiaTime(const InputMessagePtr& msg) {
+    msg->getU8(); // hours
+    msg->getU8(); // minutes
+    
+    // TODO: implement tibia time usage
 }

@@ -242,6 +242,25 @@ private:
     void parseChangeMapAwareRange(const InputMessagePtr& msg);
     void parseCreaturesMark(const InputMessagePtr& msg);
 
+    // 12.x +
+    void parseBlessDialog(const InputMessagePtr& msg);
+    void parseRestingAreaState(const InputMessagePtr& msg);
+    void parseUpdateSupplyTracker(const InputMessagePtr& msg);
+    void parseUpdateImpactTracker(const InputMessagePtr& msg);
+    void parseUpdateLootTracker(const InputMessagePtr& msg);
+    void parseKillTrackerUpdate(const InputMessagePtr& msg);
+    void parseBestiaryEntryChanged(const InputMessagePtr& msg);
+    void parseDailyRewardCollectionState(const InputMessagePtr& msg);
+    void parseOpenRewardWall(const InputMessagePtr& msg);
+    void parseDailyReward(const InputMessagePtr& msg);
+    void parseRewardHistory(const InputMessagePtr& msg);
+    void parsePreyTimeLeft(const InputMessagePtr& msg);
+    void parsePreyData(const InputMessagePtr& msg);
+    void parsePreyRerollPrice(const InputMessagePtr& msg);
+    void parseError(const InputMessagePtr& msg);
+    void parseCollectionResource(const InputMessagePtr& msg);
+    void parseTibiaTime(const InputMessagePtr& msg);
+
 public:
     void setMapDescription(const InputMessagePtr& msg, int x, int y, int z, int width, int height);
     int setFloorDescription(const InputMessagePtr& msg, int x, int y, int z, int width, int height, int offset, int skip);
