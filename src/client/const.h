@@ -508,7 +508,7 @@ namespace Otc
         StateTimed = 3
     };
 
-    enum PreyState_t : uint16_t
+    enum PreyState_t : uint8_t
     {
         PREY_STATE_LOCKED = 0,
         PREY_STATE_INACTIVE = 1,
