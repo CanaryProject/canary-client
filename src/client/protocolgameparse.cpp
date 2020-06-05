@@ -554,7 +554,7 @@ void ProtocolGame::parseBlessings(const InputMessagePtr &msg)
     uint16 blessings = msg->getU16(); // bless flag
     uint8 blessStatus = msg->getU8(); // TODO: add usage to blessStatus - 1 = Disabled | 2 = normal | 3 = green
 
-    msg->getU16(); // extra weird u16 if bless > 5 = 1 else 0
+    // msg->getU16(); // extra weird u16 if bless > 5 = 1 else 0
 
     m_localPlayer->setBlessings(blessings);
 }
