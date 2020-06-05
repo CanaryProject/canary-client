@@ -365,6 +365,9 @@ void ProtocolGame::parseMessage(const InputMessagePtr &msg)
             case Proto::GameServerRequestPurchaseData:
                 parseRequestPurchaseData(msg);
                 break;
+            case Proto::GameServerSendShowDescription:
+                parseShowDescription(msg);
+                break;
             case Proto::GameServerStoreCompletePurchase:
                 parseCompleteStorePurchase(msg);
                 break;
@@ -568,6 +571,12 @@ void ProtocolGame::parseRequestPurchaseData(const InputMessagePtr &msg)
 {
     msg->getU32(); // transactionId
     msg->getU8();  // productType
+}
+
+void ProtocolGame::parseShowDescription(const InputMessagePtr &msg)
+{
+    msg->getU32(); // offerId
+    msg->getString();  // offer description
 }
 
 void ProtocolGame::parseStore(const InputMessagePtr &msg)

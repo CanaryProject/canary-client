@@ -147,7 +147,8 @@ namespace Proto {
         GameServerCoinBalance               = 0xDF, // 1080
         GameServerStoreError                = 0xE0, // 1080
         GameServerRequestPurchaseData       = 0xE1, // 1080
-        GameServerSendResourceBalance       = 0xEE, // market
+        GameServerSendShowDescription       = 0xEA,
+        GameServerSendResourceBalance       = 0xEE, // market module
         GameServerQuestLog                  = 0xF0,
         GameServerQuestLine                 = 0xF1,
         GameServerCoinBalanceUpdating       = 0xF2, // 1080
