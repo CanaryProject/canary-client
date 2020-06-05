@@ -511,7 +511,7 @@ void ProtocolGame::parseLogin(const InputMessagePtr &msg)
     // TODO: Implement exiva button usage
     msg->getU8();
     // TODO: Implement tournament button usage
-    msg->getU8();
+    // msg->getU8();
 
     m_localPlayer->setId(playerId);
     g_game.setServerBeat(serverBeat);
@@ -635,24 +635,16 @@ void ProtocolGame::parseCompleteStorePurchase(const InputMessagePtr &msg)
 
 void ProtocolGame::parseStoreTransactionHistory(const InputMessagePtr &msg)
 {
-    int currentPage;
-    if (g_game.getClientVersion() <= 1096)
-    {
-        currentPage = msg->getU16();
-        msg->getU8(); // hasNextPage (bool)
-    }
-    else
-    {
-        currentPage = msg->getU32();
-        msg->getU32(); // pageCount
-    }
+    int currentPage = msg->getU32();
+    msg->getU32(); // pageCount
 
     int entries = msg->getU8();
     for (int i = 0; i < entries; i++)
     {
-        int time = msg->getU16();
+        int time = msg->getU32();
         int productType = msg->getU8();
         int coinChange = msg->getU32();
+        msg->getU8(); // 0 = transferable tibia coin, 1 = normal tibia coin
         std::string productName = msg->getString();
         g_logger.error(stdext::format("Time %i, type %i, change %i, product name %s", time, productType, coinChange, productName));
     }
