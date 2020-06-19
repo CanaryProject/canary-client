@@ -40,7 +40,7 @@ build:
   #verbosity: detailed
 
 cache:
-  - c:\tools\vcpkg\installed\
+  - c:\tools\vcpkg\installed\ -> appveyor.yml
   - vc14\x64
 
 after_build:
