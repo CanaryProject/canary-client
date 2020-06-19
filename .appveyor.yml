@@ -41,8 +41,12 @@ build:
 
 cache:
   - c:\tools\vcpkg\installed\
+  - vc14\x64
 
-artifacts:
-  - path: \**\otclient*.exe
-  - path: \**\*.dll
+after_build:
+  - cmd: 7z a otclient.zip otclient.exe *.dll
   
+artifacts:
+  - path: otclient.exe
+  - path: '*.dll'
+  - path: otclient.zip  
