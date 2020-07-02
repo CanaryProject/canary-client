@@ -6,7 +6,7 @@
 
 Canary-Client is an alternative Tibia client for usage with otserv. It aims to be complete and flexible,
 for that it uses LUA scripting for all game interface functionality and configurations files with a syntax
-similar to CSS for the client interface design. canary-client works with a modular system, this means
+similar to CSS for the client interface design. Canary-client works with a modular system, this means
 that each functionality is a separated module, giving the possibility to users modify and customize
 anything easily. Users can also create new mods and extend game interface for their own purposes.
 Canary-Client is written in C++11 and heavily scripted in lua.
@@ -31,7 +31,7 @@ Beyond of it's flexibility with scripts, canary-client comes with tons of other 
 the creation of new client side stuff in otserv that was not possible before. These include,
 sound system, graphics effects with shaders, modules/addons system, animated textures,
 styleable user interface, transparency, multi language, in game lua terminal, an OpenGL 1.1/2.0 ES engine that make possible
-to port to mobile platforms. canary-client is also flexible enough to
+to port to mobile platforms. Canary-client is also flexible enough to
 create tibia tools like map editors just using scripts, because it wasn't designed to be just a
 client, instead canary-client was designed to be a combination of a framework and tibia APIs.
 
