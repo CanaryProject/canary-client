@@ -2,14 +2,14 @@
 [![Build Status](https://secure.travis-ci.org/opentibiabr/canary-client.svg?branch=develop)](http://travis-ci.org/opentibiabr/canary-client)
 [![Discord Channel](https://img.shields.io/discord/528117503952551936.svg?label=discord)](https://discord.gg/3NxYnyV)
 
-### What is canary-client?
+### What is Canary-Client?
 
-canary-client is an alternative Tibia client for usage with otserv. It aims to be complete and flexible,
+Canary-Client is an alternative Tibia client for usage with otserv. It aims to be complete and flexible,
 for that it uses LUA scripting for all game interface functionality and configurations files with a syntax
 similar to CSS for the client interface design. canary-client works with a modular system, this means
 that each functionality is a separated module, giving the possibility to users modify and customize
 anything easily. Users can also create new mods and extend game interface for their own purposes.
-canary-client is written in C++11 and heavily scripted in lua.
+Canary-Client is written in C++11 and heavily scripted in lua.
 
 For a server to connect to, you can build your own with the [canary-server](https://github.com/opentibiabr/canary-server)
 or connect to one listed on [otservlist](https://otservlist.org/).
@@ -38,19 +38,19 @@ client, instead canary-client was designed to be a combination of a framework an
 ### Compiling
 
 In short, if you need to compile canary-client, follow these tutorials:
-* [Compiling on Windows](https://github.com/edubart/canary-client/wiki/Compiling-on-Windows)
-* [Compiling on Linux](https://github.com/edubart/canary-client/wiki/Compiling-on-Linux)
-* [Compiling on OS X](https://github.com/edubart/canary-client/wiki/Compiling-on-Mac-OS-X)
+* [Compiling on Windows](https://github.com/opentibiabr/canary-client/wiki/Compiling-on-Windows)
+* [Compiling on Linux](https://github.com/opentibiabr/canary-client/wiki/Compiling-on-Linux)
+* [Compiling on OS X](https://github.com/opentibiabr/canary-client/wiki/Compiling-on-Mac-OS-X)
 
 Forum OTServBR:
-* [Compiling on Windows](https://forums.otserv.com.br/index.php?/forums/topic/169297-windowsvc2019-compilando-sources-canary-client-vcpkg/)
+* [Compiling on Windows](https://forums.otserv.com.br/index.php?/forums/topic/169297-windowsvc2019-compilando-sources-otclient-vcpkg/)
 
 ### Build and run with Docker
 
 To build the image:
 
 ```sh
-docker build -t opentibiabr/canary-client .
+docker build -t opentibiabr/canary-client.
 ```
 
 To run the built image:
@@ -64,16 +64,11 @@ docker run -it --rm \
   --env DISPLAY \
   --volume /tmp/.X11-unix:/tmp/.X11-unix \
   --device /dev/dri \
-  --device /dev/snd edubart/canary-client /bin/bash
+  --device /dev/snd opentibiabr/canary-client /bin/bash
 
 # Enable access control for the X server.
 xhost -
 ```
-
-### Need help?
-
-Try to ask questions in [otland](http://otland.net/f494/), now we have a board for the project there,
-or talk with us at the gitter chat.
 
 ### Bugs
 
@@ -89,5 +84,5 @@ We encourage you to contribute to canary-client! You can make pull requests of a
 
 ### License
 
-canary-client is made available under the MIT License, thus this means that you are free
+Canary-client is made available under the MIT License, thus this means that you are free
 to do whatever you want, commercial, non-commercial, closed or open.
