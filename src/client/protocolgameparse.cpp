@@ -40,7 +40,7 @@ void ProtocolGame::parseMessage(const InputMessagePtr &msg)
 
     try
     {
-        while (msg->getBufferPosition() < msg->getLength() + 8)
+        while (!msg->eof())
         {
             opcode = msg->getU8();
 
