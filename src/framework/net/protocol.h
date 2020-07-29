@@ -76,6 +76,8 @@ private:
     bool m_xteaEncryptionEnabled;
     ConnectionPtr m_connection;
     InputMessagePtr m_inputMessage;
+
+    CanaryLib::FlatbuffersWrapper wrapper;
 };
 
 #endif

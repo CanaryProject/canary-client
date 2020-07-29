@@ -93,16 +93,7 @@ void Protocol::send(const OutputMessagePtr& outputMessage)
 
 void Protocol::recv()
 {
-    m_inputMessage->reset();
-
-    // first update message header size
-    int headerSize = 2; // 2 bytes for message size
-    if(m_checksumEnabled)
-        headerSize += 4; // 4 bytes for checksum
-    if(m_xteaEncryptionEnabled)
-        headerSize += 2; // 2 bytes for XTEA encrypted message size
-    m_inputMessage->setHeaderSize(headerSize);
-
+    wrapper.reset();
     // read the first 2 bytes which contain the message size
     if(m_connection)
         m_connection->read(2, std::bind(&Protocol::internalRecvHeader, asProtocol(), std::placeholders::_1,  std::placeholders::_2));
@@ -110,13 +101,11 @@ void Protocol::recv()
 
 void Protocol::internalRecvHeader(uint8* buffer, uint16 size)
 {
-    // read message size
-    m_inputMessage->fillBuffer(buffer, size);
-    uint16 remainingSize = m_inputMessage->readSize();
+    wrapper.copy(buffer, true);
 
     // read remaining message data
     if(m_connection)
-        m_connection->read(remainingSize, std::bind(&Protocol::internalRecvData, asProtocol(), std::placeholders::_1,  std::placeholders::_2));
+        m_connection->read(wrapper.size(), std::bind(&Protocol::internalRecvData, asProtocol(), std::placeholders::_1,  std::placeholders::_2));
 }
 
 void Protocol::internalRecvData(uint8* buffer, uint16 size)
@@ -127,19 +116,20 @@ void Protocol::internalRecvData(uint8* buffer, uint16 size)
         return;
     }
 
-    m_inputMessage->fillBuffer(buffer, size);
+    wrapper.write(buffer, size);
 
-    if(m_checksumEnabled && !m_inputMessage->readChecksum()) {
-        g_logger.traceError("got a network message with invalid checksum");
-        return;
+    if(m_checksumEnabled && !wrapper.readChecksum()) {
+      g_logger.traceError("got a network message with invalid checksum");
+      return;
     }
+
+    wrapper.deserialize();
 
     if(m_xteaEncryptionEnabled) {
-        if(!xteaDecrypt(m_inputMessage)) {
-            g_logger.traceError("failed to decrypt message");
-            return;
-        }
+      wrapper.decryptXTEA(xtea);
     }
+    m_inputMessage->write(wrapper.body(), wrapper.msgSize(), CanaryLib::MESSAGE_OPERATION_PEEK);
+    
     onRecv(m_inputMessage);
 }
 

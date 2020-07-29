@@ -161,7 +161,6 @@ void Connection::read(uint16 bytes, const RecvCallback& callback)
         return;
 
     m_recvCallback = callback;
-
     asio::async_read(m_socket,
         asio::buffer(m_inputStream.prepare(bytes)),
         std::bind(&Connection::onRecv, asConnection(), std::placeholders::_1, std::placeholders::_2));
