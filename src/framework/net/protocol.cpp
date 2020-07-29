@@ -128,6 +128,7 @@ void Protocol::internalRecvData(uint8* buffer, uint16 size)
     if(m_xteaEncryptionEnabled) {
       wrapper.decryptXTEA(xtea);
     }
+    m_inputMessage->reset();
     m_inputMessage->write(wrapper.body(), wrapper.msgSize(), CanaryLib::MESSAGE_OPERATION_PEEK);
     
     onRecv(m_inputMessage);
