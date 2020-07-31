@@ -27,8 +27,6 @@
 
 Protocol::Protocol()
 {
-    m_xteaEncryptionEnabled = false;
-    m_checksumEnabled = false;
     m_inputMessage = InputMessagePtr(new InputMessage);
 }
 
@@ -69,23 +67,23 @@ bool Protocol::isConnecting()
     return false;
 }
 
-void Protocol::send(const OutputMessagePtr& outputMessage)
+void Protocol::internalSendData(const Wrapper_ptr& inputWrapper)
 {
-    // encrypt
-    if(m_xteaEncryptionEnabled) {
-      outputMessage->writeMessageLength();
-      outputMessage->encryptXTEA(xtea);
+    if(!skipXtea) {
+      inputWrapper->encryptXTEA(xtea);
+    } else {
+      m_xteaEncryptionEnabled = true;
     }
+    inputWrapper->serialize();
+}
 
-    // write checksum
-    if(m_checksumEnabled){
-      outputMessage->writeChecksum();
-      outputMessage->writeMessageLength();
-    }
-
+void Protocol::send(const OutputMessagePtr& outputMessage, bool _skipXtea)
+{
+    spdlog::critical("{} {} {}", skipXtea, _skipXtea, m_xteaEncryptionEnabled);
+    skipXtea = _skipXtea;
     // send
     if(m_connection)
-        m_connection->write(outputMessage->getOutputBuffer(), outputMessage->getMessageSize());
+        m_connection->write(outputMessage->getDataBuffer(), outputMessage->getMessageSize(), std::bind(&Protocol::internalSendData, asProtocol(), std::placeholders::_1));
 
     // reset message to allow reuse
     outputMessage->reset();
@@ -118,7 +116,7 @@ void Protocol::internalRecvData(uint8* buffer, uint16 size)
 
     wrapper.write(buffer, size);
 
-    if(m_checksumEnabled && !wrapper.readChecksum()) {
+    if(!wrapper.readChecksum()) {
       g_logger.traceError("got a network message with invalid checksum");
       return;
     }
@@ -128,6 +126,7 @@ void Protocol::internalRecvData(uint8* buffer, uint16 size)
     if(m_xteaEncryptionEnabled) {
       wrapper.decryptXTEA(xtea);
     }
+
     m_inputMessage->reset();
     m_inputMessage->write(wrapper.body(), wrapper.msgSize(), CanaryLib::MESSAGE_OPERATION_PEEK);
     
@@ -154,13 +153,6 @@ std::vector<uint32> Protocol::getXteaKey()
   return xteaKey;
 }
 
-bool Protocol::xteaDecrypt(const InputMessagePtr& inputMessage)
-{
-  bool decrypted = inputMessage->decryptXTEA(xtea, m_checksumEnabled ? CanaryLib::CHECKSUM_METHOD_SEQUENCE : CanaryLib::CHECKSUM_METHOD_NONE);
-  inputMessage->setLength(inputMessage->getLength() + (m_checksumEnabled ? 2 : 0));
-  return decrypted;
-}
-
 void Protocol::onConnect()
 {
     callLuaField("onConnect");
@@ -173,6 +165,7 @@ void Protocol::onRecv(const InputMessagePtr& inputMessage)
 
 void Protocol::onError(const boost::system::error_code& err)
 {
+    spdlog::critical("{}", err.message());
     callLuaField("onError", err.message(), err.value());
     disconnect();
 }
