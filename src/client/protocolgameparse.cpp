@@ -55,10 +55,10 @@ void ProtocolGame::parseMessage(const InputMessagePtr &msg)
             }
 
             // try to parse in lua first
-            const int readPos = msg->getReadPos();
+            const int readPos = msg->getBufferPosition();
             if(callLuaField<bool>("onOpcode", opcode, msg))
                 continue;
-            msg->setReadPos(readPos);
+            msg->setBufferPosition(readPos);
             // restore read pos
 
             switch (opcode)
