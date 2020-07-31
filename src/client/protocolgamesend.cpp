@@ -32,7 +32,7 @@ void ProtocolGame::send(const OutputMessagePtr& outputMessage, bool skipXtea)
     // avoid usage of automated sends (bot modules)
     if(!g_game.checkBotProtection())
         return;
-    Protocol::send(outputMessage);
+    Protocol::send(outputMessage, skipXtea);
 }
 
 void ProtocolGame::sendExtendedOpcode(uint8 opcode, const std::string& buffer)
