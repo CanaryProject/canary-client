@@ -82,7 +82,7 @@ void Protocol::send(const OutputMessagePtr& outputMessage, bool _skipXtea)
     skipXtea = _skipXtea;
     // send
     if(m_connection)
-        m_connection->write(outputMessage->getDataBuffer(), outputMessage->getMessageSize(), std::bind(&Protocol::internalSendData, asProtocol(), std::placeholders::_1));
+        m_connection->write(outputMessage->getBuffer(), outputMessage->getMessageSize(), std::bind(&Protocol::internalSendData, asProtocol(), std::placeholders::_1));
 
     // reset message to allow reuse
     outputMessage->reset();

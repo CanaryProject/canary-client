@@ -47,7 +47,6 @@ public:
     uint16 getMessageSize() { return getLength(); }
 
     double getDouble();
-    bool decryptRsa(int size);
     bool eof() { return CanaryLib::NetworkMessage::eof(); }
 
 protected:

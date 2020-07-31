@@ -28,9 +28,6 @@
 #include <framework/core/timer.h>
 #include <framework/core/declarations.h>
 
-using Wrapper = CanaryLib::FlatbuffersWrapper;
-using Wrapper_ptr = std::shared_ptr<Wrapper>;
-
 class Connection : public LuaObject
 {
     typedef std::function<void(const boost::system::error_code&)> ErrorCallback;
