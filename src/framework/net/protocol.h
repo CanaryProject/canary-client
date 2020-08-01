@@ -68,8 +68,6 @@ private:
     void internalSendData(const Wrapper_ptr& wrapper);
 
     CanaryLib::XTEA xtea;
-    bool skipXtea = false;
-    bool m_xteaEncryptionEnabled = false;
 
     ConnectionPtr m_connection;
     InputMessagePtr m_inputMessage;

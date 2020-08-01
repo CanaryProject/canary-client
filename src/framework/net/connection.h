@@ -51,7 +51,7 @@ public:
     void connect(const std::string& host, uint16 port, const std::function<void()>& connectCallback);
     void close();
 
-    void write(uint8* buffer, size_t size, const SendCallback& callback);
+    void write(uint8* buffer, size_t size, bool skipXtea, const SendCallback& callback);
     void read(uint16 bytes, const RecvCallback& callback);
     void read_until(const std::string& what, const RecvCallback& callback);
 

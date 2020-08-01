@@ -69,20 +69,15 @@ bool Protocol::isConnecting()
 
 void Protocol::internalSendData(const Wrapper_ptr& inputWrapper)
 {
-    if(!skipXtea) {
-      inputWrapper->encryptXTEA(xtea);
-    } else {
-      m_xteaEncryptionEnabled = true;
-    }
-    inputWrapper->serialize();
+  inputWrapper->encryptXTEA(xtea);
+  inputWrapper->serialize();
 }
 
-void Protocol::send(const OutputMessagePtr& outputMessage, bool _skipXtea)
+void Protocol::send(const OutputMessagePtr& outputMessage, bool skipXtea)
 {
-    skipXtea = _skipXtea;
     // send
     if(m_connection)
-        m_connection->write(outputMessage->getBuffer(), outputMessage->getMessageSize(), std::bind(&Protocol::internalSendData, asProtocol(), std::placeholders::_1));
+        m_connection->write(outputMessage->getBuffer(), outputMessage->getMessageSize(), skipXtea, std::bind(&Protocol::internalSendData, asProtocol(), std::placeholders::_1));
 
     // reset message to allow reuse
     outputMessage->reset();
@@ -122,9 +117,7 @@ void Protocol::internalRecvData(uint8* buffer, uint16 size)
 
     wrapper.deserialize();
 
-    if(m_xteaEncryptionEnabled) {
-      wrapper.decryptXTEA(xtea);
-    }
+    wrapper.decryptXTEA(xtea);
 
     m_inputMessage->reset();
     m_inputMessage->write(wrapper.body(), wrapper.msgSize(), CanaryLib::MESSAGE_OPERATION_PEEK);

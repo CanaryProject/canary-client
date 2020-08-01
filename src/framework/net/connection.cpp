@@ -112,7 +112,7 @@ void Connection::internal_connect(asio::ip::basic_resolver<asio::ip::tcp>::itera
     m_readTimer.async_wait(std::bind(&Connection::onTimeout, asConnection(), std::placeholders::_1));
 }
 
-void Connection::write(uint8* buffer, size_t size, const SendCallback& callback)
+void Connection::write(uint8* buffer, size_t size, bool skipXtea, const SendCallback& callback)
 {
     if (!m_connected)
         return;
@@ -126,6 +126,10 @@ void Connection::write(uint8* buffer, size_t size, const SendCallback& callback)
         m_delayedWriteTimer.async_wait(std::bind(&Connection::onCanWrite, asConnection(), std::placeholders::_1));
     }
     
+    if (skipXtea) {
+      wrapper->disableEncryption();
+    }
+
     m_sendCallback = callback;
     wrapper->write(buffer, size, true);
 }
