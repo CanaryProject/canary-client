@@ -433,7 +433,8 @@ function addCreature(creature, sortType) -- Insert a creature in our binary tree
 		newCreature.age = lastAge + 1
 		lastAge = lastAge + 1
 		
-		--Binary Insertion	
+		--Binary Insertion
+		-- TODO: We could add in battleButton array a component to save the current Index in binary tree, avoiding to search every update and getting the information in O(1) instead of O(log2(N))
 		local newIndex = binaryInsert(binaryTree, newCreature, BSComparatorSortType, sortType, true)
 		
 		battleButton = g_ui.createWidget('BattleButton')
