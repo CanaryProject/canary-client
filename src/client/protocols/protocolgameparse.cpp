@@ -23,15 +23,15 @@
 #include "protocolgame.h"
 
 #include <framework/core/eventdispatcher.h>
-#include "effect.h"
-#include "game.h"
-#include "item.h"
-#include "localplayer.h"
-#include "luavaluecasts.h"
-#include "map.h"
-#include "missile.h"
-#include "thingtypemanager.h"
-#include "tile.h"
+#include "../effect.h"
+#include "../game.h"
+#include "../item.h"
+#include "../localplayer.h"
+#include "../luavaluecasts.h"
+#include "../map.h"
+#include "../missile.h"
+#include "../thingtypemanager.h"
+#include "../tile.h"
 
 void ProtocolGame::parseMessage(const InputMessagePtr &msg)
 {
