@@ -682,9 +682,9 @@ function onCreaturePositionChange(creature, newPos, oldPos) -- Update battleButt
 											swap(i-1, i)
 										end
 									end
-								end						
+								end
 							end
-							correctBattleButtons()
+							correctBattleButtons() -- TODO: it would be awesome if we could just update the impacted values rather than updating everything
 						else
 							assert(index ~= nil, "Not able to update Position Change. Creature: ".. creature:getName() .." id ".. creatureId .." not found in binary search using ".. sortType .." to find value ".. oldDistance ..".\n")
 						end	
@@ -729,7 +729,7 @@ function onCreatureHealthPercentChange(creature, healthPercent, oldHealthPercent
 						end
 					end						
 				end
-				correctBattleButtons()
+				correctBattleButtons() -- TODO: it would be awesome if we could just update the impacted values rather than updating everything
 			else
 				assert(index ~= nil, "Not able to update HealthPercent Change. Creature: id ".. creatureId .." not found in binary search using ".. sortType .." to find value ".. oldHealthPercent ..".")
 			end			
