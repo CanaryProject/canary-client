@@ -67,8 +67,8 @@ void Connection::close()
         return;
 
     // flush send data before disconnecting on clean connections
-    if (m_connected && !m_error && wrapper)
-        internal_write();
+    if (!m_error)
+      internalSend();
 
     m_connecting = false;
     m_connected = false;
@@ -125,18 +125,18 @@ void Connection::write(uint8* buffer, size_t size, bool skipXtea, const SendCall
         m_delayedWriteTimer.expires_from_now(boost::posix_time::milliseconds(0));
         m_delayedWriteTimer.async_wait(std::bind(&Connection::onCanWrite, asConnection(), std::placeholders::_1));
     }
-    
+
+    m_sendCallback = callback;
     if (skipXtea) {
       wrapper->disableEncryption();
     }
 
-    m_sendCallback = callback;
     wrapper->write(buffer, size, true);
 }
 
-void Connection::internal_write()
+void Connection::internalSend()
 {
-    if (!m_connected)
+    if (!m_connected || !wrapper)
         return;
 
     if (m_sendCallback) {
@@ -229,7 +229,7 @@ void Connection::onCanWrite(const boost::system::error_code& error)
         return;
 
     if (m_connected)
-        internal_write();
+        internalSend();
 }
 
 void Connection::onWrite(const boost::system::error_code& error, size_t)
@@ -240,7 +240,7 @@ void Connection::onWrite(const boost::system::error_code& error, size_t)
         return;
 
     uint16_t resetSize = 0;
-    wrapper->reset();
+
     wrapper = nullptr;
 
     if (m_connected && error)

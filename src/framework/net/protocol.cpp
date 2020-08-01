@@ -69,6 +69,8 @@ bool Protocol::isConnecting()
 
 void Protocol::internalSendData(const Wrapper_ptr& inputWrapper)
 {
+  if (!inputWrapper) return;
+  
   inputWrapper->encryptXTEA(xtea);
   inputWrapper->serialize();
 }
