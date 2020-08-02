@@ -32,7 +32,6 @@ class Connection : public LuaObject
 {
     typedef std::function<void(const boost::system::error_code&)> ErrorCallback;
     typedef std::function<void(uint8*, uint16)> RecvCallback;
-    typedef std::function<void(const Wrapper_ptr& wrapper)> SendCallback;
 
     enum {
         READ_TIMEOUT = 30,
@@ -51,7 +50,7 @@ public:
     void connect(const std::string& host, uint16 port, const std::function<void()>& connectCallback);
     void close();
 
-    void write(uint8* buffer, size_t size, bool skipXtea, const SendCallback& callback);
+    void write(uint8* buffer, size_t size, bool skipXtea);
     void read(uint16 bytes, const RecvCallback& callback);
     void read_until(const std::string& what, const RecvCallback& callback);
 
@@ -64,6 +63,7 @@ public:
     ticks_t getElapsedTicksSinceLastRead() { return m_connected ? m_activityTimer.elapsed_millis() : -1; }
 
     ConnectionPtr asConnection() { return static_self_cast<Connection>(); }
+    void setXtea(CanaryLib::XTEA *_xtea) { xtea = _xtea; }
 
 protected:
     void internal_connect(asio::ip::basic_resolver<asio::ip::tcp>::iterator endpointIterator);
@@ -79,7 +79,6 @@ protected:
     std::function<void()> m_connectCallback;
     ErrorCallback m_errorCallback;
     RecvCallback m_recvCallback;
-    SendCallback m_sendCallback;
 
     asio::deadline_timer m_readTimer;
     asio::deadline_timer m_writeTimer;
@@ -93,6 +92,8 @@ protected:
     bool m_connecting;
     boost::system::error_code m_error;
     stdext::timer m_activityTimer;
+
+    CanaryLib::XTEA *xtea = nullptr;
 
     friend class Server;
 };

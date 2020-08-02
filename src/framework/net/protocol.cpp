@@ -41,6 +41,7 @@ Protocol::~Protocol()
 void Protocol::connect(const std::string& host, uint16 port)
 {
     m_connection = ConnectionPtr(new Connection);
+    m_connection->setXtea(&xtea);
     m_connection->setErrorCallback(std::bind(&Protocol::onError, asProtocol(), std::placeholders::_1));
     m_connection->connect(host, port, std::bind(&Protocol::onConnect, asProtocol()));
 }
@@ -67,19 +68,11 @@ bool Protocol::isConnecting()
     return false;
 }
 
-void Protocol::internalSendData(const Wrapper_ptr& inputWrapper)
-{
-  if (!inputWrapper) return;
-  
-  inputWrapper->encryptXTEA(xtea);
-  inputWrapper->serialize();
-}
-
 void Protocol::send(const OutputMessagePtr& outputMessage, bool skipXtea)
 {
     // send
     if(m_connection)
-        m_connection->write(outputMessage->getBuffer(), outputMessage->getMessageSize(), skipXtea, std::bind(&Protocol::internalSendData, asProtocol(), std::placeholders::_1));
+        m_connection->write(outputMessage->getBuffer(), outputMessage->getMessageSize(), skipXtea);
 
     // reset message to allow reuse
     outputMessage->reset();
@@ -95,11 +88,11 @@ void Protocol::recv()
 
 void Protocol::internalRecvHeader(uint8* buffer, uint16 size)
 {
-    wrapper.copy(buffer, true);
+    uint16_t remaining = CanaryLib::FlatbuffersWrapper2::loadSizeFromBuffer(buffer);
 
     // read remaining message data
     if(m_connection)
-        m_connection->read(wrapper.size(), std::bind(&Protocol::internalRecvData, asProtocol(), std::placeholders::_1,  std::placeholders::_2));
+        m_connection->read(remaining, std::bind(&Protocol::internalRecvData, asProtocol(), std::placeholders::_1,  std::placeholders::_2));
 }
 
 void Protocol::internalRecvData(uint8* buffer, uint16 size)
@@ -110,20 +103,34 @@ void Protocol::internalRecvData(uint8* buffer, uint16 size)
         return;
     }
 
-    wrapper.write(buffer, size);
+    spdlog::critical("{}", size);
+    wrapper.copy(buffer, size);
 
     if(!wrapper.readChecksum()) {
       g_logger.traceError("got a network message with invalid checksum");
       return;
     }
 
-    wrapper.deserialize();
+    auto enc_msg = wrapper.getEncryptedMessage();
+    auto header = enc_msg->header();
+    uint8_t *body_buffer = (uint8_t *) enc_msg->body()->Data();
+    
+    if (xtea.isEnabled() && header->encrypted()) {
+      xtea.decrypt(header->message_size(), body_buffer);
+    }
 
-    wrapper.decryptXTEA(xtea);
+    auto content_msg = CanaryLib::GetContentMessage(body_buffer);
 
     m_inputMessage->reset();
-    m_inputMessage->write(wrapper.body(), wrapper.msgSize(), CanaryLib::MESSAGE_OPERATION_PEEK);
-    
+    for (int i = 0; i < content_msg->data()->size(); i++) {
+      const CanaryLib::DataType type = content_msg->data_type()->GetEnum<CanaryLib::DataType>(i);
+      if (type == CanaryLib::DataType_RawData) {
+        const CanaryLib::RawData *raw_data = content_msg->data()->GetAs<CanaryLib::RawData>(i);
+        m_inputMessage->write(raw_data->body()->data(), raw_data->size());
+      } 
+    }
+
+    m_inputMessage->setBufferPosition(0);
     onRecv(m_inputMessage);
 }
 

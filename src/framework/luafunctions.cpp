@@ -755,7 +755,6 @@ void Application::registerLuaFunctions()
     g_lua.bindClassStaticFunction<Server>("create", &Server::create);
     g_lua.bindClassMemberFunction<Server>("close", &Server::close);
     g_lua.bindClassMemberFunction<Server>("isOpen", &Server::isOpen);
-    g_lua.bindClassMemberFunction<Server>("acceptNext", &Server::acceptNext);
 
     // Connection
     g_lua.registerClass<Connection>();

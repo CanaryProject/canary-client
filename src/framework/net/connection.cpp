@@ -112,7 +112,7 @@ void Connection::internal_connect(asio::ip::basic_resolver<asio::ip::tcp>::itera
     m_readTimer.async_wait(std::bind(&Connection::onTimeout, asConnection(), std::placeholders::_1));
 }
 
-void Connection::write(uint8* buffer, size_t size, bool skipXtea, const SendCallback& callback)
+void Connection::write(uint8* buffer, size_t size, bool skipXtea)
 {
     if (!m_connected)
         return;
@@ -126,12 +126,16 @@ void Connection::write(uint8* buffer, size_t size, bool skipXtea, const SendCall
         m_delayedWriteTimer.async_wait(std::bind(&Connection::onCanWrite, asConnection(), std::placeholders::_1));
     }
 
-    m_sendCallback = callback;
     if (skipXtea) {
       wrapper->disableEncryption();
     }
 
-    wrapper->write(buffer, size, true);
+    flatbuffers::FlatBufferBuilder &fbb = wrapper->Builder();
+    auto fbuffer = fbb.CreateVector(buffer, size);
+    auto raw_data = CanaryLib::CreateRawData(fbb, fbuffer, size);
+    fbb.Finish(raw_data);
+    
+    wrapper->add(raw_data.Union(), CanaryLib::DataType_RawData);
 }
 
 void Connection::internalSend()
@@ -139,12 +143,12 @@ void Connection::internalSend()
     if (!m_connected || !wrapper)
         return;
 
-    if (m_sendCallback) {
-      m_sendCallback(wrapper);
-    }
+    uint8_t *buffer = wrapper->Finish(xtea);
 
+    uint16_t size = CanaryLib::FlatbuffersWrapper2::loadSizeFromBuffer(buffer);
+    spdlog::critical("{}", size);
     asio::async_write(m_socket,
-        boost::asio::buffer(wrapper->buffer(), wrapper->outputSize()),
+        boost::asio::buffer(buffer, size + CanaryLib::WRAPPER_HEADER_SIZE),
         std::bind(&Connection::onWrite, asConnection(), std::placeholders::_1, std::placeholders::_2));
 
     m_writeTimer.cancel();
@@ -241,6 +245,7 @@ void Connection::onWrite(const boost::system::error_code& error, size_t)
 
     uint16_t resetSize = 0;
 
+    wrapper->reset();
     wrapper = nullptr;
 
     if (m_connected && error)
