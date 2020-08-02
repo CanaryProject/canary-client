@@ -146,7 +146,7 @@ local function debugTables(sortType) -- Print both battlebutton and binarytree t
 	
 	msg = "printing battleButtons: {"
 	for i, v in pairs(battleButtons) do
-		msg = msg.."[".. getInfo(v.data, "name").."] = ".. getInfo(v.data, sortType) ..","
+		msg = msg.."[".. v.creature:getName() .."] = ".. v.index ..","
 	end
 	msg = msg.."}"
 	print(msg)
@@ -246,21 +246,28 @@ local function swap(index, newIndex) -- Swap indexes of a given table
 	binaryTree[highest] = tmp
 end
 
-local function correctBattleButtons(sortOrder) -- Update battleButton index based upon our binary tree
+local function correctBattleButtons(sortOrder, start_index, direction) -- Update battleButton index based upon our binary tree
 	local sortOrder = sortOrder or getSortOrder()
+	local start_index = start_index or 1
+	local direction = direction or 1
+
+	if sortOrder ~= "A" then direction = -direction	end
 	
-	local start = sortOrder == "A" and 1 or #binaryTree
-	local finish = #binaryTree - start + 1
+	local size = #binaryTree	
+	local start = sortOrder == "A" and start_index or size - start_index + 1
+	local finish = direction == 1 and size or 1
 	local increment = start <= finish and 1 or -1
 	
-	local index = 1
+	print("correcting from", start, "to", finish)
+	local index = start_index
 	for i = start, finish, increment do
 		local v = binaryTree[i]
 		local battleButton = battleButtons[v.id]
 		if battleButton ~= nil then
+			battleButton.index = i
 			battlePanel:moveChildToIndex(battleButton, index)
 			index = index + 1
-		end					
+		end
 	end
 return true
 end
@@ -401,26 +408,11 @@ local function getDistanceBetween(p1, p2) -- Calculate distance
 end
 
 -- Adding and Removing creatures
-local function getAttributeByOrderType(battleButton, orderType) -- Return the attribute of battleButton based on the orderType
-	if battleButton.data then
-		local battleButton = battleButton.data
-		if orderType == 'distance' then
-			return {distance = battleButton.distance}
-		elseif orderType == 'health' then
-			return {healthpercent = battleButton.healthpercent}
-		elseif orderType == 'age' then
-			return {age = battleButton.age}
-		else
-			return {name = battleButton.name}
-		end
-	end
-	return false
-end
-
 local lastAge = 0
 function addCreature(creature, sortType) -- Insert a creature in our binary tree
 	local creatureId = creature:getId()
 	local battleButton = battleButtons[creatureId]
+
 	if battleButton then
 		-- I don't think this situation will exist but let's keep it here.
 		battleButton:setLifeBarPercent(creature:getHealthPercent())
@@ -434,20 +426,15 @@ function addCreature(creature, sortType) -- Insert a creature in our binary tree
 		lastAge = lastAge + 1
 		
 		--Binary Insertion
-		-- TODO: We could add in battleButton array a component to save the current Index in binary tree, avoiding to search every update and getting the information in O(1) instead of O(log2(N))
 		local newIndex = binaryInsert(binaryTree, newCreature, BSComparatorSortType, sortType, true)
+		print("Adding ", creature:getName(), "On index ", newIndex)
 		
 		battleButton = g_ui.createWidget('BattleButton')
 		battleButton:setup(creature)
 		battleButton:show()
 		battleButton:setOn(true)
 		
-		battleButton.data = {}
-		--Batle Button insertion
-		for i, v in pairs(newCreature) do
-			battleButton.data[i] = v
-		end
-		
+		battleButton.index = newIndex
 		battleButton.onHoverChange = onBattleButtonHoverChange
 		battleButton.onMouseRelease = onBattleButtonMouseRelease
 		battleButtons[creatureId] = battleButton
@@ -466,6 +453,7 @@ function addCreature(creature, sortType) -- Insert a creature in our binary tree
 		else
 			battlePanel:insertChild((#binaryTree - newIndex + 1), battleButton)
 		end
+		correctBattleButtons(getSortOrder(), newIndex, 1)
 	end
 	
 	local localPlayer = g_game.getLocalPlayer()
@@ -497,19 +485,15 @@ function removeCreature(creature, all) -- Remove a single creature or all
 		if lastBattleButtonSwitched == battleButton then
 			lastBattleButtonSwitched = nil
 		end
-
-		local sortType = getSortType()
-		local valuetoSearch = getAttributeByOrderType(battleButton, sortType) --Search for the current ordered attribute to get O(log2(N))
-		assert(valuetoSearch, "Could not find information (data) in sent battleButton")
-		valuetoSearch.id = creatureId
-		
-		local index = binarySearch(binaryTree, valuetoSearch, BSComparatorSortType, sortType, creatureId)
-		if index ~= nil and creatureId == binaryTree[index].id then -- Safety first :)
+		local index = battleButton.index
+		print("Removing ", creature:getName(), "On index ", index)
+		if index ~= nil and binaryTree[index].id == creatureId then
 			local creatureListSize = #binaryTree
 			if index < creatureListSize then
 				for i = index, creatureListSize - 1 do
 					swap(i, i+1)
 				end
+				correctBattleButtons(getSortOrder(), index, 1)
 			end
 			binaryTree[creatureListSize] = nil
 			battleButton.creature:hideStaticSquare()
@@ -517,9 +501,7 @@ function removeCreature(creature, all) -- Remove a single creature or all
 			battleButtons[creatureId] = nil
 			return true
 		else
-			local msg = ""
-			for i, p in pairs(valuetoSearch) do msg = msg..p end
-			assert(index ~= nil, "Not able to remove creature: id ".. creatureId .." not found in binary search using ".. sortType .." to find value ".. msg ..".")
+			print("Index ".. index .." is not the same as the one in binaryTree.")
 		end
 	end
 	return false
@@ -595,7 +577,7 @@ end
 
 function updateCreatureSkull(creature, skullId) -- Update skull
 	local battleButton = battleButtons[creature:getId()]
-	
+
 	if battleButton then
 		battleButton:updateSkull(skullId)
 	end
@@ -603,7 +585,7 @@ end
 
 function updateCreatureEmblem(creature, emblemId) -- Update emblem
 	local battleButton = battleButtons[creature:getId()]
-	
+
 	if battleButton then
 		battleButton:updateEmblem(emblemId)
 	end
@@ -623,44 +605,46 @@ function onCreaturePositionChange(creature, newPos, oldPos) -- Update battleButt
 					local oldDistance = v.distance
 					local battleButton = battleButtons[v.id]
 					local mob = battleButton.creature or g_map.getCreatureById(v.id)
-					local newDistance = getDistanceBetween(newPos, mob:getPosition())
+					local mob_pos = mob:getPosition()
+
+					local newDistance = getDistanceBetween(newPos, mob_pos)
 					if oldDistance ~= newDistance then
 						v.distance = newDistance
-						battleButton.data.distance = newDistance
+						battleButton:setVisible(creature:hasSight(mob_pos) and mob:canBeSeen())
 					end
 				end
 				table.sort(binaryTree, function(a, b) return BSComparatorSortType(a, b, 'distance', true) == 1 end)
 				correctBattleButtons()
-			end
-			
-			for i, v in pairs(battleButtons) do
-				local mob = v.creature
-				if mob and mob:getPosition() then
-					v:setVisible(creature:hasSight(mob:getPosition()) and mob:canBeSeen())
+			else
+				for i, v in pairs(battleButtons) do
+					local mob = v.creature
+					if mob and mob:getPosition() then
+						v:setVisible(creature:hasSight(mob:getPosition()) and mob:canBeSeen())
+					end
 				end
 			end
-			--battlePanel:getLayout():update()
 		end
 	else
 		-- If it's a creature moving
 		local creatureId = creature:getId()
 		local battleButton = battleButtons[creatureId]
 		local fit = doCreatureFitFilters(creature)
-		
-		if battleButton ~= nil then 
+
+		if battleButton ~= nil then
 			if not fit and newPos then -- if there's no newPos the creature is dead, let onCreatureDisappear handles that.
-				removeCreature(creature)				
+				removeCreature(creature)
 			elseif fit then
 				if oldPos and newPos and (newPos.x ~= oldPos.x or newPos.y ~= oldPos.y) then
 					if sortType == 'distance' then
 						local localPlayer = g_game.getLocalPlayer()
 						local newDistance = getDistanceBetween(localPlayer:getPosition(), newPos)
-						local oldDistance = battleButton.data.distance
+						local index = battleButton.index
 
-						local index = binarySearch(binaryTree, {distance = oldDistance, id = creatureId}, BSComparatorSortType, 'distance', true)
-						if index ~= nil and creatureId == binaryTree[index].id then -- Safety first :)
-							binaryTree[index].distance = newDistance
-							battleButton.data.distance = newDistance
+						local bintree = binaryTree[index]
+						if bintree and bintree.id == creatureId then
+							local oldDistance = bintree.distance
+							bintree.distance = newDistance
+
 							if newDistance > oldDistance then							
 								if index < #binaryTree then
 									for i = index, #binaryTree - 1 do
@@ -670,10 +654,10 @@ function onCreaturePositionChange(creature, newPos, oldPos) -- Update battleButt
 											swap(i, i+1)
 										end
 									end
+									correctBattleButtons(getSortOrder(), index, 1)
 								end
 							elseif newDistance < oldDistance then
 								battleButton:setVisible(localPlayer:hasSight(newPos) and creature:canBeSeen())
-								--battlePanel:getLayout():update()
 								if index > 1 then
 									for i = index, 2, -1 do
 										local a = binaryTree[i-1]
@@ -682,12 +666,12 @@ function onCreaturePositionChange(creature, newPos, oldPos) -- Update battleButt
 											swap(i-1, i)
 										end
 									end
+									correctBattleButtons(getSortOrder(), index, -1)
 								end
 							end
-							correctBattleButtons() -- TODO: it would be awesome if we could just update the impacted values rather than updating everything
 						else
-							assert(index ~= nil, "Not able to update Position Change. Creature: ".. creature:getName() .." id ".. creatureId .." not found in binary search using ".. sortType .." to find value ".. oldDistance ..".\n")
-						end	
+							print("Index ".. index .." is not the same as the one in binaryTree.")
+						end
 					end
 				end			
 			end		
@@ -701,13 +685,12 @@ function onCreatureHealthPercentChange(creature, healthPercent, oldHealthPercent
 	if battleButton then
 		local sortType = getSortType()
 		if sortType == 'health' then
-			if healthPercent == oldHealthPercent then return false end -- Sanity Check			
-			if healthPercent == 0 then return false end -- if healthpercent is 0 the creature is dead, let onCreatureDisappear handles that.
+			if healthPercent == 0 or healthPercent == oldHealthPercent then return false end -- If health is 0 the creature is dead, let onCreatureDisappear handles that
 			
-			local index = binarySearch(binaryTree, {healthpercent = oldHealthPercent, id = creatureId}, BSComparatorSortType, 'health', true)
-			if index ~= nil and creatureId == binaryTree[index].id then -- Safety first :)
-				binaryTree[index].healthpercent = healthPercent
-				battleButton.data.healthpercent = healthPercent
+			local index = battleButton.index
+			local bintree = binaryTree[index]
+			if bintree and bintree.id == creatureId then
+				bintree.healthpercent = healthPercent
 				if healthPercent > oldHealthPercent then -- Check if health is positive or negative to update it more efficently.
 					if index < #binaryTree then
 						for i = index, #binaryTree - 1 do
@@ -717,6 +700,7 @@ function onCreatureHealthPercentChange(creature, healthPercent, oldHealthPercent
 								swap(i, i+1)
 							end
 						end
+						correctBattleButtons(getSortOrder(), index, 1)
 					end
 				else
 					if index > 1 then
@@ -727,13 +711,12 @@ function onCreatureHealthPercentChange(creature, healthPercent, oldHealthPercent
 								swap(i-1, i)
 							end
 						end
-					end						
+						correctBattleButtons(getSortOrder(), index, -1)
+					end
 				end
-				correctBattleButtons() -- TODO: it would be awesome if we could just update the impacted values rather than updating everything
 			else
-				assert(index ~= nil, "Not able to update HealthPercent Change. Creature: id ".. creatureId .." not found in binary search using ".. sortType .." to find value ".. oldHealthPercent ..".")
-			end			
-			
+				print("Index ".. index .." is not the same as the one in binaryTree.")
+			end
 		end
 		battleButton:setLifeBarPercent(healthPercent)
 	end
