@@ -86,7 +86,6 @@ protected:
     asio::ip::tcp::resolver m_resolver;
     asio::ip::tcp::socket m_socket;
 
-    Wrapper_ptr wrapper;
     asio::streambuf m_inputStream;
     bool m_connected;
     bool m_connecting;
@@ -94,6 +93,7 @@ protected:
     stdext::timer m_activityTimer;
 
     CanaryLib::XTEA *xtea = nullptr;
+    std::list<Wrapper_ptr> wrapperList;
 
     friend class Server;
 };

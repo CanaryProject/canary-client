@@ -69,7 +69,7 @@ private:
     InputMessagePtr m_inputMessage;
 
     CanaryLib::XTEA xtea;
-    CanaryLib::FlatbuffersWrapper2 wrapper;
+    CanaryLib::FlatbuffersWrapper wrapper;
 };
 
 #endif

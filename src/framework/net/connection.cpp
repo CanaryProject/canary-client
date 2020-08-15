@@ -117,9 +117,15 @@ void Connection::write(uint8* buffer, size_t size, bool skipXtea)
     if (!m_connected)
         return;
 
+    Wrapper_ptr wrapper;
+    if (!wrapperList.empty()) {
+      wrapper = wrapperList.front();
+    }
+
     // we can't send the data right away, otherwise we could create tcp congestion
-    if (!wrapper) {
+    if (!wrapper || wrapper->isWriteLocked()) {
         wrapper = std::make_shared<Wrapper>();
+        wrapperList.emplace_back(wrapper);
 
         m_delayedWriteTimer.cancel();
         m_delayedWriteTimer.expires_from_now(boost::posix_time::milliseconds(0));
@@ -140,15 +146,15 @@ void Connection::write(uint8* buffer, size_t size, bool skipXtea)
 
 void Connection::internalSend()
 {
-    if (!m_connected || !wrapper)
+    if (!m_connected || wrapperList.empty())
         return;
 
-    uint8_t *buffer = wrapper->Finish(xtea);
+    Wrapper_ptr wrapper = wrapperList.front();
+    
+    wrapper->Finish(xtea);
 
-    uint16_t size = CanaryLib::FlatbuffersWrapper2::loadSizeFromBuffer(buffer);
-    spdlog::critical("{}", size);
     asio::async_write(m_socket,
-        boost::asio::buffer(buffer, size + CanaryLib::WRAPPER_HEADER_SIZE),
+        boost::asio::buffer(wrapper->Buffer(), wrapper->Size() + CanaryLib::WRAPPER_HEADER_SIZE),
         std::bind(&Connection::onWrite, asConnection(), std::placeholders::_1, std::placeholders::_2));
 
     m_writeTimer.cancel();
@@ -161,7 +167,7 @@ void Connection::read(uint16 bytes, const RecvCallback& callback)
     if (!m_connected)
         return;
 
-    m_recvCallback = callback;
+    m_recvCallback = callback; 
     asio::async_read(m_socket,
         asio::buffer(m_inputStream.prepare(bytes)),
         std::bind(&Connection::onRecv, asConnection(), std::placeholders::_1, std::placeholders::_2));
@@ -243,10 +249,9 @@ void Connection::onWrite(const boost::system::error_code& error, size_t)
     if (error == asio::error::operation_aborted)
         return;
 
-    uint16_t resetSize = 0;
-
-    wrapper->reset();
-    wrapper = nullptr;
+    if (!wrapperList.empty()) {
+      wrapperList.pop_front();
+    }
 
     if (m_connected && error)
         handleError(error);

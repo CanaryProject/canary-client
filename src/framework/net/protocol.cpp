@@ -88,7 +88,7 @@ void Protocol::recv()
 
 void Protocol::internalRecvHeader(uint8* buffer, uint16 size)
 {
-    uint16_t remaining = CanaryLib::FlatbuffersWrapper2::loadSizeFromBuffer(buffer);
+    uint16_t remaining = wrapper.loadSizeFromBuffer(buffer);
 
     // read remaining message data
     if(m_connection)
@@ -103,7 +103,6 @@ void Protocol::internalRecvData(uint8* buffer, uint16 size)
         return;
     }
 
-    spdlog::critical("{}", size);
     wrapper.copy(buffer, size);
 
     if(!wrapper.readChecksum()) {
