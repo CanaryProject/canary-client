@@ -29,8 +29,8 @@
 #include "localplayer.h"
 #include "luavaluecasts.h"
 #include "map.h"
-#include "protocolcodes.h"
-#include "protocolgame.h"
+#include "protocols/protocolcodes.h"
+#include "protocols/protocolgame.h"
 #include "statictext.h"
 #include "tile.h"
 
@@ -240,11 +240,6 @@ void Game::processGMActions(const std::vector<uint8>& actions)
 {
     m_gmActions = actions;
     g_lua.callGlobalField("g_game", "onGMActions", actions);
-}
-
-void Game::processPlayerHelpers(int helpers)
-{
-    g_lua.callGlobalField("g_game", "onPlayerHelpersUpdate", helpers);
 }
 
 void Game::processPlayerModes(Otc::FightModes fightMode, Otc::ChaseModes chaseMode, bool safeMode, Otc::PVPModes pvpMode)
@@ -794,7 +789,7 @@ void Game::move(const ThingPtr& thing, const Position& toPos, int count)
     uint id = thing->getId();
     if(thing->isCreature()) {
         CreaturePtr creature = thing->static_self_cast<Creature>();
-        id = Proto::Creature;
+        id = CanaryLib::Creature;
     }
 
     m_protocolGame->sendMove(thing->getPosition(), id, thing->getStackPos(), toPos, count);
@@ -939,7 +934,7 @@ void Game::attack(CreaturePtr creature)
 
     m_protocolGame->sendAttack(creature ? creature->getId() : 0, m_seq);
 
-    g_map.requestDrawing(Otc::ReDrawThing, true);
+    g_map.requestDrawing(Position(), Otc::ReDrawThing, true);
 }
 
 void Game::follow(CreaturePtr creature)

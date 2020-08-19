@@ -1,23 +1,20 @@
-/*
- * Copyright (c) 2010-2020 OTClient <https://github.com/edubart/otclient>
+/**
+ * Canary Lib - Canary Project a free 2D game platform
+ * Copyright (C) 2020  Lucas Grossi <lucas.ggrossi@gmail.com>
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #include "connection.h"
@@ -29,7 +26,6 @@
 #include <memory>
 
 asio::io_service g_ioService;
-std::list<std::shared_ptr<asio::streambuf>> Connection::m_outputStreams;
 
 Connection::Connection() :
     m_readTimer(g_ioService),
@@ -60,7 +56,6 @@ void Connection::poll()
 void Connection::terminate()
 {
     g_ioService.stop();
-    m_outputStreams.clear();
 }
 
 void Connection::close()
@@ -69,8 +64,8 @@ void Connection::close()
         return;
 
     // flush send data before disconnecting on clean connections
-    if (m_connected && !m_error && m_outputStream)
-        internal_write();
+    if (!m_error)
+      internalSend();
 
     m_connecting = false;
     m_connected = false;
@@ -114,41 +109,48 @@ void Connection::internal_connect(asio::ip::basic_resolver<asio::ip::tcp>::itera
     m_readTimer.async_wait(std::bind(&Connection::onTimeout, asConnection(), std::placeholders::_1));
 }
 
-void Connection::write(uint8* buffer, size_t size)
+void Connection::write(uint8* buffer, size_t size, bool skipXtea)
 {
     if (!m_connected)
         return;
 
+    Wrapper_ptr wrapper;
+    if (!wrapperList.empty()) {
+      wrapper = wrapperList.front();
+    }
+
     // we can't send the data right away, otherwise we could create tcp congestion
-    if (!m_outputStream) {
-        if (!m_outputStreams.empty()) {
-            m_outputStream = m_outputStreams.front();
-            m_outputStreams.pop_front();
-        }
-        else
-            m_outputStream = std::make_shared<asio::streambuf>();
+    if (!wrapper || wrapper->isWriteLocked()) {
+        wrapper = std::make_shared<Wrapper>();
+        wrapperList.emplace_back(wrapper);
 
         m_delayedWriteTimer.cancel();
         m_delayedWriteTimer.expires_from_now(boost::posix_time::milliseconds(0));
         m_delayedWriteTimer.async_wait(std::bind(&Connection::onCanWrite, asConnection(), std::placeholders::_1));
     }
 
-    std::ostream os(m_outputStream.get());
-    os.write((const char*)buffer, size);
-    os.flush();
+    if (skipXtea) {
+      wrapper->disableEncryption();
+    }
+
+    flatbuffers::FlatBufferBuilder &fbb = wrapper->Builder();
+    auto fbuffer = fbb.CreateVector(buffer, size);
+    auto raw_data = CanaryLib::CreateRawData(fbb, fbuffer, size);
+    wrapper->add(raw_data.Union(), CanaryLib::DataType_RawData);
 }
 
-void Connection::internal_write()
+void Connection::internalSend()
 {
-    if (!m_connected)
+    if (!m_connected || wrapperList.empty())
         return;
 
-    std::shared_ptr<asio::streambuf> outputStream = m_outputStream;
-    m_outputStream = nullptr;
+    Wrapper_ptr wrapper = wrapperList.front();
+    
+    wrapper->Finish(xtea);
 
     asio::async_write(m_socket,
-        *outputStream,
-        std::bind(&Connection::onWrite, asConnection(), std::placeholders::_1, std::placeholders::_2, outputStream));
+        boost::asio::buffer(wrapper->Buffer(), wrapper->Size() + CanaryLib::WRAPPER_HEADER_SIZE),
+        std::bind(&Connection::onWrite, asConnection(), std::placeholders::_1, std::placeholders::_2));
 
     m_writeTimer.cancel();
     m_writeTimer.expires_from_now(boost::posix_time::seconds(static_cast<uint32>(WRITE_TIMEOUT)));
@@ -160,8 +162,7 @@ void Connection::read(uint16 bytes, const RecvCallback& callback)
     if (!m_connected)
         return;
 
-    m_recvCallback = callback;
-
+    m_recvCallback = callback; 
     asio::async_read(m_socket,
         asio::buffer(m_inputStream.prepare(bytes)),
         std::bind(&Connection::onRecv, asConnection(), std::placeholders::_1, std::placeholders::_2));
@@ -181,21 +182,6 @@ void Connection::read_until(const std::string& what, const RecvCallback& callbac
     asio::async_read_until(m_socket,
         m_inputStream,
         what,
-        std::bind(&Connection::onRecv, asConnection(), std::placeholders::_1, std::placeholders::_2));
-
-    m_readTimer.cancel();
-    m_readTimer.expires_from_now(boost::posix_time::seconds(static_cast<uint32>(READ_TIMEOUT)));
-    m_readTimer.async_wait(std::bind(&Connection::onTimeout, asConnection(), std::placeholders::_1));
-}
-
-void Connection::read_some(const RecvCallback& callback)
-{
-    if (!m_connected)
-        return;
-
-    m_recvCallback = callback;
-
-    m_socket.async_read_some(asio::buffer(m_inputStream.prepare(RECV_BUFFER_SIZE)),
         std::bind(&Connection::onRecv, asConnection(), std::placeholders::_1, std::placeholders::_2));
 
     m_readTimer.cancel();
@@ -248,19 +234,19 @@ void Connection::onCanWrite(const boost::system::error_code& error)
         return;
 
     if (m_connected)
-        internal_write();
+        internalSend();
 }
 
-void Connection::onWrite(const boost::system::error_code& error, size_t, std::shared_ptr<asio::streambuf> outputStream)
+void Connection::onWrite(const boost::system::error_code& error, size_t)
 {
     m_writeTimer.cancel();
 
     if (error == asio::error::operation_aborted)
         return;
 
-    // free output stream and store for using it again later
-    outputStream->consume(outputStream->size());
-    m_outputStreams.push_back(outputStream);
+    if (!wrapperList.empty()) {
+      wrapperList.pop_front();
+    }
 
     if (m_connected && error)
         handleError(error);

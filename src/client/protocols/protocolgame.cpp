@@ -21,10 +21,10 @@
  */
 
 #include "protocolgame.h"
-#include "game.h"
-#include "item.h"
-#include "localplayer.h"
-#include "player.h"
+#include "../game.h"
+#include "../item.h"
+#include "../localplayer.h"
+#include "../player.h"
 
 void ProtocolGame::login(const std::string& accountName, const std::string& accountPassword, const std::string& host, uint16 port, const std::string& characterName, const std::string& authenticatorToken, const std::string& sessionKey)
 {
@@ -39,13 +39,9 @@ void ProtocolGame::login(const std::string& accountName, const std::string& acco
 
 void ProtocolGame::onConnect()
 {
-    m_firstRecv = true;
     Protocol::onConnect();
 
     m_localPlayer = g_game.getLocalPlayer();
-
-    if(g_game.getFeature(Otc::GameProtocolChecksum))
-        enableChecksum();
 
     if(!g_game.getFeature(Otc::GameChallengeOnLogin))
         sendLoginPacket(0, 0);
@@ -55,20 +51,7 @@ void ProtocolGame::onConnect()
 
 void ProtocolGame::onRecv(const InputMessagePtr& inputMessage)
 {
-    if(m_firstRecv) {
-        m_firstRecv = false;
-
-        if(g_game.getFeature(Otc::GameMessageSizeCheck)) {
-            const int size = inputMessage->getU16();
-            if(size != inputMessage->getUnreadSize()) {
-                g_logger.traceError("invalid message size");
-                return;
-            }
-        }
-    }
-
     parseMessage(inputMessage);
-    recv();
 }
 
 void ProtocolGame::onError(const boost::system::error_code& error)
@@ -76,3 +59,7 @@ void ProtocolGame::onError(const boost::system::error_code& error)
     g_game.processConnectionError(error);
     disconnect();
 }
+
+void ProtocolGame::parseError(const CanaryLib::ErrorData *err) {
+  Protocol::parseError(err);
+};

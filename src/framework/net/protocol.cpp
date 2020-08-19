@@ -1,23 +1,20 @@
-/*
- * Copyright (c) 2010-2020 OTClient <https://github.com/edubart/otclient>
+/**
+ * Canary Lib - Canary Project a free 2D game platform
+ * Copyright (C) 2020  Lucas Grossi <lucas.ggrossi@gmail.com>
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #include "protocol.h"
@@ -27,8 +24,6 @@
 
 Protocol::Protocol()
 {
-    m_xteaEncryptionEnabled = false;
-    m_checksumEnabled = false;
     m_inputMessage = InputMessagePtr(new InputMessage);
 }
 
@@ -43,6 +38,7 @@ Protocol::~Protocol()
 void Protocol::connect(const std::string& host, uint16 port)
 {
     m_connection = ConnectionPtr(new Connection);
+    m_connection->setXtea(&xtea);
     m_connection->setErrorCallback(std::bind(&Protocol::onError, asProtocol(), std::placeholders::_1));
     m_connection->connect(host, port, std::bind(&Protocol::onConnect, asProtocol()));
 }
@@ -69,22 +65,11 @@ bool Protocol::isConnecting()
     return false;
 }
 
-void Protocol::send(const OutputMessagePtr& outputMessage)
+void Protocol::send(const OutputMessagePtr& outputMessage, bool skipXtea)
 {
-    // encrypt
-    if(m_xteaEncryptionEnabled)
-        xteaEncrypt(outputMessage);
-
-    // write checksum
-    if(m_checksumEnabled)
-        outputMessage->writeChecksum();
-
-    // write message size
-    outputMessage->writeMessageSize();
-
     // send
     if(m_connection)
-        m_connection->write(outputMessage->getHeaderBuffer(), outputMessage->getMessageSize());
+        m_connection->write(outputMessage->getBuffer(), outputMessage->getMessageSize(), skipXtea);
 
     // reset message to allow reuse
     outputMessage->reset();
@@ -92,16 +77,7 @@ void Protocol::send(const OutputMessagePtr& outputMessage)
 
 void Protocol::recv()
 {
-    m_inputMessage->reset();
-
-    // first update message header size
-    int headerSize = 2; // 2 bytes for message size
-    if(m_checksumEnabled)
-        headerSize += 4; // 4 bytes for checksum
-    if(m_xteaEncryptionEnabled)
-        headerSize += 2; // 2 bytes for XTEA encrypted message size
-    m_inputMessage->setHeaderSize(headerSize);
-
+    wrapper.reset();
     // read the first 2 bytes which contain the message size
     if(m_connection)
         m_connection->read(2, std::bind(&Protocol::internalRecvHeader, asProtocol(), std::placeholders::_1,  std::placeholders::_2));
@@ -109,13 +85,11 @@ void Protocol::recv()
 
 void Protocol::internalRecvHeader(uint8* buffer, uint16 size)
 {
-    // read message size
-    m_inputMessage->fillBuffer(buffer, size);
-    uint16 remainingSize = m_inputMessage->readSize();
+    uint16_t remaining = wrapper.loadSizeFromBuffer(buffer);
 
     // read remaining message data
     if(m_connection)
-        m_connection->read(remainingSize, std::bind(&Protocol::internalRecvData, asProtocol(), std::placeholders::_1,  std::placeholders::_2));
+        m_connection->read(remaining, std::bind(&Protocol::internalRecvData, asProtocol(), std::placeholders::_1,  std::placeholders::_2));
 }
 
 void Protocol::internalRecvData(uint8* buffer, uint16 size)
@@ -126,112 +100,44 @@ void Protocol::internalRecvData(uint8* buffer, uint16 size)
         return;
     }
 
-    m_inputMessage->fillBuffer(buffer, size);
+    wrapper.copy(buffer, size);
 
-    if(m_checksumEnabled && !m_inputMessage->readChecksum()) {
-        g_logger.traceError("got a network message with invalid checksum");
-        return;
+    if(!wrapper.readChecksum()) {
+      g_logger.traceError("got a network message with invalid checksum");
+      return;
     }
 
-    if(m_xteaEncryptionEnabled) {
-        if(!xteaDecrypt(m_inputMessage)) {
-            g_logger.traceError("failed to decrypt message");
-            return;
-        }
+    auto enc_msg = wrapper.getEncryptedMessage();
+    auto header = enc_msg->header();
+    uint8_t *body_buffer = (uint8_t *) enc_msg->body()->Data();
+    
+    if (xtea.isEnabled() && header->encrypted()) {
+      xtea.decrypt(header->message_size(), body_buffer);
     }
-    onRecv(m_inputMessage);
+
+    m_inputMessage->reset();
+    parseContentMessage(CanaryLib::GetContentMessage(body_buffer));
 }
 
-void Protocol::generateXteaKey()
+std::vector<uint32> Protocol::generateXteaKey()
 {
-    std::mt19937 eng(std::time(nullptr));
-    std::uniform_int_distribution<uint32> unif(0, 0xFFFFFFFF);
-    m_xteaKey[0] = unif(eng);
-    m_xteaKey[1] = unif(eng);
-    m_xteaKey[2] = unif(eng);
-    m_xteaKey[3] = unif(eng);
+  xtea.generateKey();
+  return getXteaKey();
 }
 
 void Protocol::setXteaKey(uint32 a, uint32 b, uint32 c, uint32 d)
 {
-    m_xteaKey[0] = a;
-    m_xteaKey[1] = b;
-    m_xteaKey[2] = c;
-    m_xteaKey[3] = d;
+  uint32_t key[4] = { a, b, c, d };
+  xtea.setKey(key);
 }
 
 std::vector<uint32> Protocol::getXteaKey()
 {
-    std::vector<uint32> xteaKey;
-    xteaKey.resize(4);
-    for(int i = 0; i < 4; ++i)
-        xteaKey[i] = m_xteaKey[i];
-    return xteaKey;
-}
-
-bool Protocol::xteaDecrypt(const InputMessagePtr& inputMessage)
-{
-    uint16 encryptedSize = inputMessage->getUnreadSize();
-    if(encryptedSize % 8 != 0) {
-        g_logger.traceError("invalid encrypted network message");
-        return false;
-    }
-
-    uint32 *buffer = (uint32*)(inputMessage->getReadBuffer());
-    int readPos = 0;
-
-    while(readPos < encryptedSize/4) {
-        uint32 v0 = buffer[readPos], v1 = buffer[readPos + 1];
-        uint32 delta = 0x61C88647;
-        uint32 sum = 0xC6EF3720;
-
-        for(int32 i = 0; i < 32; i++) {
-            v1 -= ((v0 << 4 ^ v0 >> 5) + v0) ^ (sum + m_xteaKey[sum>>11 & 3]);
-            sum += delta;
-            v0 -= ((v1 << 4 ^ v1 >> 5) + v1) ^ (sum + m_xteaKey[sum & 3]);
-        }
-        buffer[readPos] = v0; buffer[readPos + 1] = v1;
-        readPos = readPos + 2;
-    }
-
-    uint16 decryptedSize = inputMessage->getU16() + 2;
-    int sizeDelta = decryptedSize - encryptedSize;
-    if(sizeDelta > 0 || -sizeDelta > encryptedSize) {
-        g_logger.traceError("invalid decrypted network message");
-        return false;
-    }
-
-    inputMessage->setMessageSize(inputMessage->getMessageSize() + sizeDelta);
-    return true;
-}
-
-void Protocol::xteaEncrypt(const OutputMessagePtr& outputMessage)
-{
-    outputMessage->writeMessageSize();
-    uint16 encryptedSize = outputMessage->getMessageSize();
-
-    //add bytes until reach 8 multiple
-    if((encryptedSize % 8) != 0) {
-        uint16 n = 8 - (encryptedSize % 8);
-        outputMessage->addPaddingBytes(n);
-        encryptedSize += n;
-    }
-
-    int readPos = 0;
-    uint32 *buffer = (uint32*)(outputMessage->getDataBuffer() - 2);
-    while(readPos < encryptedSize / 4) {
-        uint32 v0 = buffer[readPos], v1 = buffer[readPos + 1];
-        uint32 delta = 0x61C88647;
-        uint32 sum = 0;
-
-        for(int32 i = 0; i < 32; i++) {
-            v0 += ((v1 << 4 ^ v1 >> 5) + v1) ^ (sum + m_xteaKey[sum & 3]);
-            sum -= delta;
-            v1 += ((v0 << 4 ^ v0 >> 5) + v0) ^ (sum + m_xteaKey[sum>>11 & 3]);
-        }
-        buffer[readPos] = v0; buffer[readPos + 1] = v1;
-        readPos = readPos + 2;
-    }
+  std::vector<uint32> xteaKey;
+  xteaKey.resize(4);
+  for(int i = 0; i < 4; ++i)
+    xteaKey[i] = xtea.getKey()[i];
+  return xteaKey;
 }
 
 void Protocol::onConnect()
@@ -246,6 +152,15 @@ void Protocol::onRecv(const InputMessagePtr& inputMessage)
 
 void Protocol::onError(const boost::system::error_code& err)
 {
+    spdlog::error("{}", err.message());
     callLuaField("onError", err.message(), err.value());
     disconnect();
+}
+
+void Protocol::parseCharacterList(const CanaryLib::CharactersListData *characters) {
+    spdlog::debug("Calling Protocol::parseCharacterList");
+}
+
+void Protocol::parseError(const CanaryLib::ErrorData *err) {
+    spdlog::error("{}", err->message()->str());
 }

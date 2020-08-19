@@ -35,7 +35,8 @@
 #include "missile.h"
 #include "outfit.h"
 #include "player.h"
-#include "protocolgame.h"
+#include "protocols/protocolgame.h"
+#include "protocols/protocollogin.h"
 #include "shadermanager.h"
 #include "spritemanager.h"
 #include "statictext.h"
@@ -334,6 +335,14 @@ void Client::registerLuaFunctions()
     g_lua.bindClassMemberFunction<ProtocolGame>("getCreature", &ProtocolGame::getCreature);
     g_lua.bindClassMemberFunction<ProtocolGame>("getItem", &ProtocolGame::getItem);
     g_lua.bindClassMemberFunction<ProtocolGame>("getPosition", &ProtocolGame::getPosition);
+
+    g_lua.registerClass<ProtocolLogin, Protocol>();
+    g_lua.bindClassStaticFunction<ProtocolLogin>("create", [] { return ProtocolLoginPtr(new ProtocolLogin); });
+    g_lua.bindClassMemberFunction<ProtocolLogin>("setAccount", &ProtocolLogin::setAccount);
+    g_lua.bindClassMemberFunction<ProtocolLogin>("setPassword", &ProtocolLogin::setPassword);
+    g_lua.bindClassMemberFunction<ProtocolLogin>("setAuthToken", &ProtocolLogin::setAuthToken);
+    g_lua.bindClassMemberFunction<ProtocolLogin>("setStayLogged", &ProtocolLogin::setStayLogged);
+    g_lua.bindClassMemberFunction<ProtocolLogin>("sendLoginPacket", &ProtocolLogin::sendLoginPacket);
 
     g_lua.registerClass<Container>();
     g_lua.bindClassMemberFunction<Container>("getItem", &Container::getItem);
@@ -776,6 +785,7 @@ void Client::registerLuaFunctions()
     g_lua.bindClassMemberFunction<UIMap>("getZoom", &UIMap::getZoom);
     g_lua.bindClassMemberFunction<UIMap>("getMapShader", &UIMap::getMapShader);
     g_lua.bindClassMemberFunction<UIMap>("getMinimumAmbientLight", &UIMap::getMinimumAmbientLight);
+    g_lua.bindClassMemberFunction<UIMap>("getVisibleCreatures", &UIMap::getVisibleCreatures);
 
     g_lua.registerClass<UIMinimap, UIWidget>();
     g_lua.bindClassStaticFunction<UIMinimap>("create", [] { return UIMinimapPtr(new UIMinimap); });

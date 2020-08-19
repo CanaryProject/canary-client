@@ -1459,7 +1459,7 @@ void UIWidget::updateStyle()
                 if (notstate)
                     stateStr = stateStr.substr(1);
 
-                bool stateOn = hasState(Fw::translateState(stateStr));
+                const bool stateOn = hasState(Fw::translateState(stateStr));
                 if ((!notstate && !stateOn) || (notstate && stateOn))
                     match = false;
             }

@@ -230,7 +230,7 @@ uint32 FileStream::getU32()
 
 uint64 FileStream::getU64()
 {
-    uint64 v = 0;
+    PHYSFS_uint64 v = 0;
     if(!m_caching) {
         if(PHYSFS_readULE64(m_fileHandle, (PHYSFS_uint64*)&v) == 0)
             throwError("read failed", true);
@@ -293,7 +293,7 @@ int32 FileStream::get32()
 
 int64 FileStream::get64()
 {
-    int64 v = 0;
+    PHYSFS_sint64 v = 0;
     if(!m_caching) {
         if(PHYSFS_readSLE64(m_fileHandle, (PHYSFS_sint64*)&v) == 0)
             throwError("read failed", true);

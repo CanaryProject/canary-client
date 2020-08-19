@@ -108,7 +108,7 @@ protected:
     void preWalk(Otc::Direction direction);
     void cancelWalk(Otc::Direction direction = Otc::InvalidDirection);
     void stopWalk() override;
-    void updateWalk(const bool = false) override { Creature::updateWalk(m_preWalking); }
+    void updateWalk() override { Creature::updateWalk(); }
 
     friend class Game;
 
@@ -125,8 +125,6 @@ private:
     ScheduledEventPtr m_autoWalkContinueEvent;
     ticks_t m_walkLockExpiration;
     stdext::boolean<false> m_preWalking;
-    stdext::boolean<true> m_lastPrewalkDone;
-    stdext::boolean<false> m_secondPreWalk;
     stdext::boolean<false> m_serverWalking;
     stdext::boolean<false> m_knownCompletePath;
 

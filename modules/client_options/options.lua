@@ -1,5 +1,5 @@
 local defaultOptions = {
-  vsync = false,
+  vsync = true,
   showFps = false,
   showPing = false,
   fullscreen = false,
@@ -20,7 +20,7 @@ local defaultOptions = {
   enableMusicSound = true,
   musicSoundVolume = 100,
   enableLights = true,
-  ambientLight = 25,
+  ambientLight = 0,
   displayNames = true,
   displayHealth = true,
   displayMana = true,
@@ -254,6 +254,14 @@ end
 
 function addTab(name, panel, icon)
   optionsTabBar:addTab(name, panel, icon)
+end
+
+function removeTab(v)
+  if type(v) == "string" then
+    v = optionsTabBar:getTab(v)
+  end
+  
+  optionsTabBar:removeTab(v)
 end
 
 function addButton(name, func, icon)

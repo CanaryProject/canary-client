@@ -206,7 +206,7 @@ std::string Crypt::getCryptKey(bool useMachineUUID)
         uuid = nilgen();
     }
     boost::uuids::name_generator namegen(uuid);
-    boost::uuids::uuid u = namegen(g_app.getCompactName() + g_platform.getCPUName() + g_platform.getOSName() + g_resources.getUserDir());
+    const boost::uuids::uuid u = namegen(g_app.getCompactName() + g_platform.getCPUName() + g_platform.getOSName() + g_resources.getUserDir());
     std::size_t hash = uuid_hasher(u);
     std::string key;
     key.assign((const char *)&hash, sizeof(hash));

@@ -318,9 +318,12 @@ void ThingType::unserialize(uint16 clientId, ThingCategory category, const FileS
             AnimatorPtr animator = AnimatorPtr(new Animator);
             animator->unserialize(groupAnimationsPhases, fin);
 
-            if(groupCount == 1 || frameGroupType == FrameGroupMoving)
+            if(groupCount == 1 || frameGroupType == FrameGroupMoving) {
                 m_animator = animator;
-            else m_idleAnimator = animator;
+            }
+            else {
+                m_idleAnimator = animator;
+            }
         }
 
         const int totalSprites = m_size.area() * m_layers * m_numPatternX * m_numPatternY * m_numPatternZ * groupAnimationsPhases;
@@ -334,6 +337,11 @@ void ThingType::unserialize(uint16 clientId, ThingCategory category, const FileS
             m_spritesIndex[j] = g_game.getFeature(Otc::GameSpritesU32) ? fin->getU32() : fin->getU16();
 
         totalSpritesCount += totalSprites;
+    }
+
+    if(m_idleAnimator && !m_animator) {
+      m_animator = m_idleAnimator;
+      m_idleAnimator = nullptr;
     }
 
     if(sizes.size() > 1) {
@@ -667,7 +675,7 @@ void ThingType::startListenerPainter(const float duration)
             if(getCategory() == ThingCategoryMissile && hasLight())
                 redrawFlag |= Otc::ReDrawLight;
 
-            g_map.requestDrawing(static_cast<Otc::RequestDrawFlags>(redrawFlag));
+            g_map.requestDrawing(Position(), static_cast<Otc::RequestDrawFlags>(redrawFlag));
         }, duration);
     }
 
@@ -684,7 +692,7 @@ bool ThingType::cancelListenerPainter()
         uint32_t redrawFlag = Otc::ReDrawThing;
         if(hasLight()) redrawFlag |= Otc::ReDrawLight;
 
-        g_map.requestDrawing(static_cast<Otc::RequestDrawFlags>(redrawFlag), true);
+        g_map.requestDrawing(Position(), static_cast<Otc::RequestDrawFlags>(redrawFlag), true);
 
         m_painterListeningEvent->cancel();
         m_painterListeningEvent = nullptr;

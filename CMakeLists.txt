@@ -12,9 +12,11 @@ option(FRAMEWORK_SQL "Use SQL" OFF)
 include(src/framework/CMakeLists.txt)
 include(src/client/CMakeLists.txt)
 
+add_subdirectory(canary-lib)
+
 # functions map for reading backtraces
 if(NOT APPLE)
-    set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -Wl,-Map=${PROJECT_NAME}.map")
+    set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -fPIC -no-pie -Wl,-Map=${PROJECT_NAME}.map")
 endif()
 
 option(USE_PCH "Use precompiled header (speed up compile)" OFF)
@@ -37,7 +39,7 @@ add_definitions(-D"VERSION=\\"${VERSION}\\"")
 
 # add client executable
 add_executable(${PROJECT_NAME} ${framework_SOURCES} ${client_SOURCES} ${executable_SOURCES})
-target_link_libraries(${PROJECT_NAME} ${framework_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${framework_LIBRARIES} canary_lib::common_lib)
 
 if(USE_PCH)
     include(cotire)
