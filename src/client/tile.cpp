@@ -258,6 +258,8 @@ bool Tile::removeThing(const ThingPtr& thing)
   
     ThingPtr temporaryReference = thing;
 
+    ThingPtr temporaryReference = thing;
+
     if(thing->isEffect()) {
         const EffectPtr& effect = thing->static_self_cast<Effect>();
         const auto it = std::find(m_effects.begin(), m_effects.end(), effect);
