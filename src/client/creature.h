@@ -91,7 +91,6 @@ public:
     uint8 getSkull() { return m_skull; }
     uint8 getShield() { return m_shield; }
     uint8 getEmblem() { return m_emblem; }
-    uint8 getType() { return m_type; }
     uint8 getIcon() { return m_icon; }
     bool isPassable() { return m_passable; }
     int getStepDuration(bool ignoreDiagonal = false, Otc::Direction dir = Otc::InvalidDirection);
@@ -167,7 +166,6 @@ protected:
     uint8 m_skull;
     uint8 m_shield;
     uint8 m_emblem;
-    uint8 m_type;
     uint8 m_icon;
     TexturePtr m_skullTexture;
     TexturePtr m_shieldTexture;
