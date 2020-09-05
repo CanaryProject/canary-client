@@ -2259,7 +2259,7 @@ CreaturePtr ProtocolGame::getCreature(const InputMessagePtr &msg, int type)
             if (!creature)
                 g_logger.traceError("server said that a creature is known, but it's not");
 
-            if(creature->isLocalPlayer()) g_map.resetLastCamera();
+            if (creature && creature->isLocalPlayer()) g_map.resetLastCamera();
         } else {
             const uint32_t removeId = msg->getU32();
             g_map.removeCreatureById(removeId);
@@ -2289,13 +2289,8 @@ CreaturePtr ProtocolGame::getCreature(const InputMessagePtr &msg, int type)
                 creature = MonsterPtr(new Monster);
             else if (creatureType == CREATURETYPE_NPC)
                 creature = NpcPtr(new Npc);
-            else if (creatureType == CREATURETYPE_UNKNOWN)
-            {
-                // TODO: Implement hidden creature type specific features
-                creature = CreaturePtr(new Creature);
-            }
             else
-                g_logger.traceError("creature type is invalid");
+                creature = CreaturePtr(new Creature);
 
             if (creature)
             {
@@ -2326,10 +2321,6 @@ CreaturePtr ProtocolGame::getCreature(const InputMessagePtr &msg, int type)
         {
             // TODO: Implement player summon specific features
             msg->getU32(); // master id
-        }
-        else if (creatureType == CREATURETYPE_UNKNOWN)
-        {
-            // TODO: Implement hidden creature type specific features
         }
         else if (creatureType == CREATURETYPE_PLAYER)
         {
@@ -2723,4 +2714,21 @@ void ProtocolGame::parseTibiaTime(const InputMessagePtr& msg) {
     msg->getU8(); // minutes
     
     // TODO: implement tibia time usage
+}
+
+
+// FLATBUFFERS TODO: MOVE TO IT OWN FILE
+
+void ProtocolGame::parseFloorData(const CanaryLib::FloorData* floor) {
+  auto pos_buf = floor->central_pos();
+  Position pos = Position{ pos_buf->x(), pos_buf->y(), pos_buf->z() };
+
+  m_localPlayer->setPosition(pos);
+
+  g_map.setCentralPosition(pos);
+
+  spdlog::critical("{} {} {}", pos.x, pos.y, pos.z);
+
+  // setMapDescription(msg, pos.x - range.left, pos.y - range.top, pos.z, range.horizontal(), range.vertical());
+
 }
