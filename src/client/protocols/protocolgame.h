@@ -130,6 +130,10 @@ protected:
     
     void parseError(const CanaryLib::ErrorData *err) override;
 
+    void parseThingData(const CanaryLib::ThingData* thing) override;
+    void parseCreatureData(const CanaryLib::CreatureData* creature, const CanaryLib::Position* pos) override;
+    void parseItemData(const CanaryLib::ItemData* item, const CanaryLib::Position* pos) override;
+
     friend class Game;
 
 public:
@@ -296,6 +300,7 @@ private:
     std::string m_characterName;
     LocalPlayerPtr m_localPlayer;
 
+    uint8_t stack = 0;
     CanaryLib::Protocol_t protocolType = CanaryLib::Protocol_t_PROTOCOL_GAME;
 };
 

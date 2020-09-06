@@ -2718,17 +2718,131 @@ void ProtocolGame::parseTibiaTime(const InputMessagePtr& msg) {
 
 
 // FLATBUFFERS TODO: MOVE TO IT OWN FILE
-
-void ProtocolGame::parseFloorData(const CanaryLib::FloorData* floor) {
-  auto pos_buf = floor->central_pos();
+void ProtocolGame::parseThingData(const CanaryLib::ThingData* thing) {
+  auto pos_buf = thing->central_pos();
   Position pos = Position{ pos_buf->x(), pos_buf->y(), pos_buf->z() };
 
   m_localPlayer->setPosition(pos);
-
   g_map.setCentralPosition(pos);
 
-  spdlog::critical("{} {} {}", pos.x, pos.y, pos.z);
+  if (thing->clean_tile()) {
+    g_map.cleanTile(pos);
+    stack = 0;
+  }
 
-  // setMapDescription(msg, pos.x - range.left, pos.y - range.top, pos.z, range.horizontal(), range.vertical());
+  FlatbuffersParser::parseThingData(thing);
+  stack++;
+}
 
+void ProtocolGame::parseCreatureData(const CanaryLib::CreatureData* creature, const CanaryLib::Position* pos) {
+  Position position = Position{ pos->x(), pos->y(), pos->z() };
+  const std::string name = g_game.formatCreatureName(creature->name()->str());
+
+  CreaturePtr creaturePtr;
+  if (creature->id() == m_localPlayer->getId() || name == m_localPlayer->getName()) {
+    creaturePtr = m_localPlayer;
+    m_localPlayer->setKnown(true);
+  }
+  else
+    creaturePtr = g_map.getCreatureById(creature->id());
+
+  if (creaturePtr && creaturePtr->isLocalPlayer()) g_map.resetLastCamera();
+
+  if (creature->remove_id()) g_map.removeCreatureById(creature->remove_id());
+
+  if (!creaturePtr) {
+    switch (creature->type()) {
+    case CanaryLib::CreatureType_t_CREATURETYPE_SUMMON_OWN:
+    case CanaryLib::CreatureType_t_CREATURETYPE_SUMMON_OTHERS:
+    case CanaryLib::CreatureType_t_CREATURETYPE_MONSTER:
+      creaturePtr = MonsterPtr(new Monster);
+      break;
+    case CanaryLib::CreatureType_t_CREATURETYPE_PLAYER:
+      creaturePtr = PlayerPtr(new Player);
+      break;
+    case CanaryLib::CreatureType_t_CREATURETYPE_NPC:
+      creaturePtr = NpcPtr(new Npc);
+      break;
+    default:
+      creaturePtr = CreaturePtr(new Creature);
+      break;
+    }
+
+    creaturePtr->setId(creature->id());
+    creaturePtr->setName(name);
+    g_map.addCreature(creaturePtr);
+  }
+
+  if (creature->square_mark() == 0xff)
+    creaturePtr->hideStaticSquare();
+  else
+    creaturePtr->showStaticSquare(Color::from8bit(creature->square_mark()));
+
+  creaturePtr->setHealthPercent(creature->health_percent());
+  creaturePtr->turn(static_cast<Otc::Direction>(creature->direction()));
+  creaturePtr->setSpeed(creature->speed());
+  creaturePtr->setSkull(creature->skull());
+  creaturePtr->setShield(creature->party_shield());
+  creaturePtr->setPassable(creature->walkable());
+  creaturePtr->setType(creature->type());
+  creaturePtr->setIcon(creature->icon());
+
+  Light light;
+  light.intensity = creature->light()->intensity();
+  light.color = creature->light()->color();
+  creaturePtr->setLight(light);
+
+  if (creature->guild_emblem() > 0) creaturePtr->setEmblem(creature->guild_emblem());
+
+  spdlog::critical("aqui");
+  g_map.addThing(creaturePtr, position, -1);
+
+  auto outfit_buf = creature->outfit();
+  uint16_t lookType = outfit_buf->id();
+  uint16_t lookTypeEx = outfit_buf->item_id();
+
+  Outfit outfit;
+  if (lookType) {
+    if (!g_things.isValidDatId(lookTypeEx, ThingCategoryItem)) {
+      g_logger.traceError(stdext::format("invalid outfit looktypeex %d", lookTypeEx));
+      lookTypeEx = 0;
+    }
+    outfit.setCategory(ThingCategoryItem);
+    outfit.setAuxId(lookTypeEx);
+  }
+  else if (lookTypeEx) {
+    if (!g_things.isValidDatId(lookType, ThingCategoryCreature)) {
+      g_logger.traceError(stdext::format("invalid outfit looktype %d", lookType));
+      lookType = 0;
+    }
+
+    outfit.setCategory(ThingCategoryCreature);
+    outfit.setId(lookType);
+    outfit.setHead(outfit_buf->head());
+    outfit.setBody(outfit_buf->body());
+    outfit.setLegs(outfit_buf->legs());
+    outfit.setFeet(outfit_buf->feet());
+    outfit.setAddons(outfit_buf->addon());
+  }
+  else {
+    outfit.setCategory(ThingCategoryEffect);
+    outfit.setAuxId(13); // invisible effect id
+  }
+
+  outfit.setMount(outfit_buf->mount());
+
+  creaturePtr->setOutfit(outfit);
+}
+
+void ProtocolGame::parseItemData(const CanaryLib::ItemData* item, const CanaryLib::Position* pos) {
+  ItemPtr itemPtr = Item::create(item->id());
+
+  if (itemPtr->isStackable() || itemPtr->isChargeable())
+    itemPtr->setCountOrSubType(item->count());
+
+  else if (itemPtr->isFluidContainer() || itemPtr->isSplash())
+    itemPtr->setCountOrSubType(item->fluid_type());
+
+  Position position = Position{ pos->x(), pos->y(), pos->z() };
+  g_map.addThing(itemPtr, position, -1);
 }
