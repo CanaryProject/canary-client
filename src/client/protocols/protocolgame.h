@@ -134,6 +134,8 @@ protected:
     void parseCreatureData(const CanaryLib::CreatureData* creature, const CanaryLib::Position* pos) override;
     void parseItemData(const CanaryLib::ItemData* item, const CanaryLib::Position* pos) override;
 
+    void parseTileData(const CanaryLib::TileData* tile) override;
+
     friend class Game;
 
 public:

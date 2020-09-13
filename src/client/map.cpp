@@ -524,10 +524,7 @@ void Map::addCreature(const CreaturePtr& creature)
 
 CreaturePtr Map::getCreatureById(uint32 id)
 {
-    const auto it = m_knownCreatures.find(id);
-    if(it == m_knownCreatures.end())
-        return nullptr;
-    return it->second;
+  return m_knownCreatures[id];
 }
 
 void Map::removeCreatureById(uint32 id)
@@ -545,7 +542,7 @@ void Map::removeUnawareThings()
     // remove creatures from tiles that we are not aware of anymore
     for(const auto& pair : m_knownCreatures) {
         const CreaturePtr& creature = pair.second;
-        if(!isAwareOfPosition(creature->getPosition()))
+        if(creature && !isAwareOfPosition(creature->getPosition()))
             removeThing(creature);
     }
 

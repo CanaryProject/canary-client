@@ -2719,15 +2719,17 @@ void ProtocolGame::parseTibiaTime(const InputMessagePtr& msg) {
 
 // FLATBUFFERS TODO: MOVE TO IT OWN FILE
 void ProtocolGame::parseThingData(const CanaryLib::ThingData* thing) {
-  auto pos_buf = thing->central_pos();
-  Position pos = Position{ pos_buf->x(), pos_buf->y(), pos_buf->z() };
-
-  m_localPlayer->setPosition(pos);
-  g_map.setCentralPosition(pos);
+  auto thingPos = thing->pos();
+  Position pos = Position{ thingPos->x(), thingPos->y(), thingPos->z() };
 
   if (thing->clean_tile()) {
     g_map.cleanTile(pos);
     stack = 0;
+  }
+
+  if (thing->is_central_pos()) {
+    m_localPlayer->setPosition(pos);
+    g_map.setCentralPosition(pos);
   }
 
   FlatbuffersParser::parseThingData(thing);
@@ -2739,16 +2741,16 @@ void ProtocolGame::parseCreatureData(const CanaryLib::CreatureData* creature, co
   const std::string name = g_game.formatCreatureName(creature->name()->str());
 
   CreaturePtr creaturePtr;
-  if (creature->id() == m_localPlayer->getId() || name == m_localPlayer->getName()) {
+  if (creature->id() == m_localPlayer->getId())
     creaturePtr = m_localPlayer;
-    m_localPlayer->setKnown(true);
-  }
   else
     creaturePtr = g_map.getCreatureById(creature->id());
 
-  if (creaturePtr && creaturePtr->isLocalPlayer()) g_map.resetLastCamera();
+  if (creaturePtr && creaturePtr->isLocalPlayer()) 
+    g_map.resetLastCamera();
 
-  if (creature->remove_id()) g_map.removeCreatureById(creature->remove_id());
+  if (creature->remove_id()) 
+    g_map.removeCreatureById(creature->remove_id());
 
   if (!creaturePtr) {
     switch (creature->type()) {
@@ -2758,6 +2760,11 @@ void ProtocolGame::parseCreatureData(const CanaryLib::CreatureData* creature, co
       creaturePtr = MonsterPtr(new Monster);
       break;
     case CanaryLib::CreatureType_t_CREATURETYPE_PLAYER:
+      // fixes a bug server side bug where GameInit is not sent and local player id is unknown
+      if (m_localPlayer->getId() == 0 && name == m_localPlayer->getName())
+        creaturePtr = m_localPlayer;
+      else
+        creaturePtr = PlayerPtr(new Player);
       creaturePtr = PlayerPtr(new Player);
       break;
     case CanaryLib::CreatureType_t_CREATURETYPE_NPC:
@@ -2770,7 +2777,13 @@ void ProtocolGame::parseCreatureData(const CanaryLib::CreatureData* creature, co
 
     creaturePtr->setId(creature->id());
     creaturePtr->setName(name);
+
     g_map.addCreature(creaturePtr);
+  }
+
+  if (creaturePtr == m_localPlayer && !m_localPlayer->isKnown()) {
+    g_map.addCreature(creaturePtr);
+    m_localPlayer->setKnown(true);
   }
 
   if (creature->square_mark() == 0xff)
@@ -2794,23 +2807,12 @@ void ProtocolGame::parseCreatureData(const CanaryLib::CreatureData* creature, co
 
   if (creature->guild_emblem() > 0) creaturePtr->setEmblem(creature->guild_emblem());
 
-  spdlog::critical("aqui");
-  g_map.addThing(creaturePtr, position, -1);
-
   auto outfit_buf = creature->outfit();
   uint16_t lookType = outfit_buf->id();
   uint16_t lookTypeEx = outfit_buf->item_id();
 
   Outfit outfit;
   if (lookType) {
-    if (!g_things.isValidDatId(lookTypeEx, ThingCategoryItem)) {
-      g_logger.traceError(stdext::format("invalid outfit looktypeex %d", lookTypeEx));
-      lookTypeEx = 0;
-    }
-    outfit.setCategory(ThingCategoryItem);
-    outfit.setAuxId(lookTypeEx);
-  }
-  else if (lookTypeEx) {
     if (!g_things.isValidDatId(lookType, ThingCategoryCreature)) {
       g_logger.traceError(stdext::format("invalid outfit looktype %d", lookType));
       lookType = 0;
@@ -2824,6 +2826,14 @@ void ProtocolGame::parseCreatureData(const CanaryLib::CreatureData* creature, co
     outfit.setFeet(outfit_buf->feet());
     outfit.setAddons(outfit_buf->addon());
   }
+  else if (lookTypeEx) {
+    if (!g_things.isValidDatId(lookTypeEx, ThingCategoryItem)) {
+      g_logger.traceError(stdext::format("invalid outfit looktypeex %d", lookTypeEx));
+      lookTypeEx = 0;
+    }
+    outfit.setCategory(ThingCategoryItem);
+    outfit.setAuxId(lookTypeEx);
+  }
   else {
     outfit.setCategory(ThingCategoryEffect);
     outfit.setAuxId(13); // invisible effect id
@@ -2832,6 +2842,8 @@ void ProtocolGame::parseCreatureData(const CanaryLib::CreatureData* creature, co
   outfit.setMount(outfit_buf->mount());
 
   creaturePtr->setOutfit(outfit);
+
+  g_map.addThing(creaturePtr, position, -1);
 }
 
 void ProtocolGame::parseItemData(const CanaryLib::ItemData* item, const CanaryLib::Position* pos) {
@@ -2845,4 +2857,50 @@ void ProtocolGame::parseItemData(const CanaryLib::ItemData* item, const CanaryLi
 
   Position position = Position{ pos->x(), pos->y(), pos->z() };
   g_map.addThing(itemPtr, position, -1);
+}
+
+void ProtocolGame::parseTileData(const CanaryLib::TileData* tile) {
+  auto tilePos = tile->pos();
+  Position pos = Position{ tilePos->x(), tilePos->y(), tilePos->z() };
+
+  if (tile->clean()) {
+    g_map.cleanTile(pos);
+    stack = 0;
+  }
+
+  if (tile->is_central()) {
+    m_localPlayer->setPosition(pos);
+    g_map.setCentralPosition(pos);
+  }
+
+  if (auto ground = tile->ground()) {
+    parseItemData(ground, tilePos);
+    stack++;
+  }
+
+  if (auto bottom_items = tile->bottom_items()) {
+    for (auto item : *bottom_items) {
+      parseItemData(item, tilePos);
+      stack++;
+    }
+  }
+
+  if (auto creatures = tile->creatures()) {
+    for (auto creature : *creatures) {
+      parseCreatureData(creature, tilePos);
+      stack++;
+    }
+  }
+
+  if (auto top_items = tile->top_items()) {
+    for (auto item : *top_items) {
+      parseItemData(item, tilePos);
+      stack++;
+    }
+  }
+
+  if (auto player_data = tile->local_player()) {
+    parseCreatureData(player_data, tilePos);
+    stack++;
+  }
 }
