@@ -128,7 +128,9 @@ protected:
     void onRecv(const InputMessagePtr& inputMessage) override;
     void onError(const boost::system::error_code& error) override;
     
-    void parseError(const CanaryLib::ErrorData *err) override;
+    void parseError(const CanaryLib::ErrorData* err) override;
+
+    void parseFloorData(const CanaryLib::FloorData* floor) override;
 
     void parseThingData(const CanaryLib::ThingData* thing) override;
     void parseCreatureData(const CanaryLib::CreatureData* creature, const CanaryLib::Position* pos) override;

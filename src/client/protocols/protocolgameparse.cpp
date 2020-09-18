@@ -2904,3 +2904,7 @@ void ProtocolGame::parseTileData(const CanaryLib::TileData* tile) {
     stack++;
   }
 }
+
+void ProtocolGame::parseFloorData(const CanaryLib::FloorData* floor) {
+  if (auto tiles = floor->tiles()) for (auto tile : *tiles) parseTileData(tile);;
+}
